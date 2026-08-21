@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar — LosPizzanitos</title>
+<link rel="stylesheet" href="auth.css">
+</head>
+<body>
+ 
+<header class="topo">
+  <div class="marca">
+    <span class="bolinha"></span>
+    <div>
+      <h1>LOSPIZZANITOS</h1>
+      <p>Pizzaria sabor caseiro · forno a lenha</p>
+    </div>
+  </div>
+  <nav>
+    <a href="cardapio.html">CARDÁPIO</a>
+    <a href="cadastro.html">CRIAR CONTA</a>
+  </nav>
+</header>
+ 
+<main>
+  <div class="card">
+    <h2>ENTRAR</h2>
+    <p class="subtitulo">Acesse sua conta para pedir sua pizza</p>
+ 
+    <form id="formLogin">
+      <div>
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+ 
+      <div>
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" name="senha" required>
+      </div>
+ 
+      <button type="submit" class="btn-principal" id="btnEntrar">ENTRAR</button>
+      <p class="mensagem" id="mensagem"></p>
+    </form>
+ 
+    <p class="rodape-card">Ainda não tem conta? <a href="cadastro.html">Cadastre-se</a></p>
+  </div>
+</main>
+ 
+<script>
+  const form = document.getElementById('formLogin');
+  const mensagem = document.getElementById('mensagem');
+  const btn = document.getElementById('btnEntrar');
+ 
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    mensagem.textContent = '';
+    mensagem.className = 'mensagem';
+    btn.disabled = true;
+    btn.textContent = 'ENTRANDO...';
+ 
+    try {
+      const resposta = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('email').value,
+          senha: document.getElementById('senha').value
+        })
+      });
+ 
+      const dados = await resposta.json();
+ 
+      if (dados.sucesso) {
+        mensagem.textContent = 'Login feito com sucesso!';
+        mensagem.className = 'mensagem sucesso';
+        setTimeout(() => window.location.href = 'cardapio.html', 800);
+      } else {
+        mensagem.textContent = 'E-mail ou senha incorretos.';
+        mensagem.className = 'mensagem erro';
+      }
+    } catch (erro) {
+      mensagem.textContent = 'Não foi possível conectar ao servidor.';
+      mensagem.className = 'mensagem erro';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'ENTRAR';
+    }
+  });
+</script>
+ 
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criar conta — LosPizzanitos</title>
+<link rel="stylesheet" href="auth.css">
+</head>
+<body>
+ 
+<header class="topo">
+  <div class="marca">
+    <span class="bolinha"></span>
+    <div>
+      <h1>LOSPIZZANITOS</h1>
+      <p>Pizzaria sabor caseiro · forno a lenha</p>
+    </div>
+  </div>
+  <nav>
+    <a href="cardapio.html">CARDÁPIO</a>
+    <a href="login.html">ENTRAR</a>
+  </nav>
+</header>
+ 
+<main>
+  <div class="card">
+    <h2>CRIAR CONTA</h2>
+    <p class="subtitulo">Cadastre-se para fazer seu pedido</p>
+ 
+    <form id="formCadastro">
+      <div>
+        <label for="nome">Nome completo</label>
+        <input type="text" id="nome" name="nome" required>
+      </div>
+ 
+      <div>
+        <label for="email">E-mail</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+ 
+      <div class="linha-dupla">
+        <div>
+          <label for="telefone">Telefone</label>
+          <input type="tel" id="telefone" name="telefone" placeholder="(00) 00000-0000" required>
+        </div>
+        <div>
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" minlength="6" required>
+        </div>
+      </div>
+ 
+      <button type="submit" class="btn-principal" id="btnCadastrar">CRIAR CONTA</button>
+      <p class="mensagem" id="mensagem"></p>
+    </form>
+ 
+    <p class="rodape-card">Já tem conta? <a href="login.html">Entrar</a></p>
+  </div>
+</main>
+ 
+<script>
+  const form = document.getElementById('formCadastro');
+  const mensagem = document.getElementById('mensagem');
+  const btn = document.getElementById('btnCadastrar');
+ 
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    mensagem.textContent = '';
+    mensagem.className = 'mensagem';
+    btn.disabled = true;
+    btn.textContent = 'CRIANDO...';
+ 
+    try {
+      const resposta = await fetch('/api/cadastro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: document.getElementById('nome').value,
+          email: document.getElementById('email').value,
+          telefone: document.getElementById('telefone').value,
+          senha: document.getElementById('senha').value
+        })
+      });
+ 
+      const dados = await resposta.json();
+ 
+      if (dados.sucesso) {
+        mensagem.textContent = 'Conta criada com sucesso!';
+        mensagem.className = 'mensagem sucesso';
+        setTimeout(() => window.location.href = 'login.html', 900);
+      } else {
+        mensagem.textContent = dados.erro || 'Não foi possível criar a conta.';
+        mensagem.className = 'mensagem erro';
+      }
+    } catch (erro) {
+      mensagem.textContent = 'Não foi possível conectar ao servidor.';
+      mensagem.className = 'mensagem erro';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'CRIAR CONTA';
+    }
+  });
+</script>
+ 
+</body>
+</html>

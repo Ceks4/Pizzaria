@@ -1,0 +1,199 @@
+/* ===========================================================
+   LosPizzanitos — Login / Cadastro
+   Paleta: terracota (#a0522d), vinho (#5c1f1f), creme (#f4f1ea)
+   =========================================================== */
+ 
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+ 
+body {
+  font-family: 'Segoe UI', Tahoma, sans-serif;
+  background: #f4f1ea;
+  color: #3a2a24;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+ 
+/* Header, igual ao cardapio.html */
+header.topo {
+  background: linear-gradient(120deg, #a0522d, #7a3a20);
+  color: #fff;
+  padding: 28px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+ 
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+ 
+.marca .bolinha {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f4f1ea;
+}
+ 
+.marca h1 {
+  font-size: 1.7rem;
+  letter-spacing: 3px;
+  font-weight: 700;
+}
+ 
+.marca p {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  letter-spacing: 0.5px;
+}
+ 
+nav a {
+  color: #f4f1ea;
+  text-decoration: none;
+  margin-left: 28px;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+ 
+nav a:hover,
+nav a:focus-visible {
+  text-decoration: underline;
+}
+ 
+/* Área central */
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+}
+ 
+.card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(90, 40, 20, 0.12);
+  padding: 44px 40px;
+  width: 100%;
+  max-width: 420px;
+}
+ 
+.card h2 {
+  font-size: 1.8rem;
+  letter-spacing: 2px;
+  color: #5c1f1f;
+  text-align: center;
+  margin-bottom: 6px;
+}
+ 
+.card .subtitulo {
+  text-align: center;
+  color: #7a6a60;
+  font-size: 0.9rem;
+  margin-bottom: 30px;
+}
+ 
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+ 
+label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #5c1f1f;
+  margin-bottom: 6px;
+  display: block;
+}
+ 
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e0d8cc;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #faf8f4;
+  color: #3a2a24;
+}
+ 
+input:focus-visible {
+  outline: 2px solid #a0522d;
+  outline-offset: 1px;
+  border-color: #a0522d;
+}
+ 
+.linha-dupla {
+  display: flex;
+  gap: 14px;
+}
+ 
+.linha-dupla > div {
+  flex: 1;
+}
+ 
+button.btn-principal {
+  margin-top: 8px;
+  background: #5c1f1f;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 13px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+ 
+button.btn-principal:hover,
+button.btn-principal:focus-visible {
+  background: #a0522d;
+}
+ 
+button.btn-principal:disabled {
+  background: #c9b8ac;
+  cursor: not-allowed;
+}
+ 
+.mensagem {
+  text-align: center;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  min-height: 18px;
+}
+ 
+.mensagem.erro { color: #b02a2a; }
+.mensagem.sucesso { color: #2a7a3d; }
+ 
+.rodape-card {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 0.85rem;
+  color: #7a6a60;
+}
+ 
+.rodape-card a {
+  color: #a0522d;
+  font-weight: 600;
+  text-decoration: none;
+}
+ 
+.rodape-card a:hover {
+  text-decoration: underline;
+}
+ 
+@media (max-width: 480px) {
+  .card { padding: 32px 24px; }
+  .linha-dupla { flex-direction: column; gap: 18px; }
+  header.topo { padding: 20px 24px; }
+}
