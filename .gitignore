@@ -1,7 +1,2 @@
+backend/.env
 node_modules/
-.env
-.env.*
-!.env.example
-
-.vscode/*
-!.vscode/settings.json
