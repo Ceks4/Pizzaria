@@ -30,6 +30,45 @@ nav a:hover {
   transform: translateY(-2px);
 }
 
+.btn-auth {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 6px;
+  margin-left: 10px;
+}
+
+.btn-auth:hover {
+  border-bottom: none;
+  transform: translateY(-2px);
+}
+
+.btn-entrar {
+  border: 1px solid white;
+}
+
+.btn-cadastro {
+  background: #ffb703;
+  color: #222;
+}
+
+@media (max-width: 760px) {
+  nav {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  nav > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  nav a,
+  .btn-auth {
+    margin-left: 0;
+  }
+}
+
 .container {
   width: 90%;
   max-width: 1100px;
