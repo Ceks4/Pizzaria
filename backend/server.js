@@ -36,12 +36,30 @@ app.post('/api/login', async (req, res) => {
   const { email, senha } = req.body;
  
   try {
-    const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+    const result = await pool.query(
+      `SELECT u.id, u.nome, u.email, c.telefone, u.senha_hash
+       FROM usuarios u
+       LEFT JOIN clientes c ON c.usuario_id = u.id
+       WHERE u.email = $1`,
+      [email]
+    );
  
     if (result.rows.length === 0) return res.json({ sucesso: false });
  
-    const senhaCorreta = await bcrypt.compare(senha, result.rows[0].senha_hash);
-    res.json({ sucesso: senhaCorreta });
+    const usuario = result.rows[0];
+    const senhaCorreta = await bcrypt.compare(senha, usuario.senha_hash);
+
+    if (!senhaCorreta) return res.json({ sucesso: false });
+
+    res.json({
+      sucesso: true,
+      usuario: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        telefone: usuario.telefone
+      }
+    });
   } catch (erro) {
     console.error(erro);
     res.json({ sucesso: false });

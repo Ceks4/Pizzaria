@@ -23,6 +23,11 @@
       <a href="#doces">Doces</a>
       <a href="#bebidas">Bebidas</a>
       <a href="#ajuda">Ajuda e Suporte</a>
+      <div class="perfil" id="perfil" hidden>
+        <span class="perfil-saudacao">Olá, <strong id="perfilNome"></strong></span>
+        <span class="perfil-email" id="perfilEmail"></span>
+        <button type="button" id="btnSair">Sair</button>
+      </div>
     </nav>
   </div>
 </header>
@@ -379,6 +384,27 @@
     <p class="miudo">Preços referentes ao tamanho grande. Consulte valores para broto e média.</p>
   </div>
 </footer>
+
+<script>
+  let usuario = null;
+  try {
+    usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+  } catch (erro) {
+    localStorage.removeItem('usuarioLogado');
+  }
+  const perfil = document.getElementById('perfil');
+
+  if (usuario) {
+    document.getElementById('perfilNome').textContent = usuario.nome;
+    document.getElementById('perfilEmail').textContent = usuario.email;
+    perfil.hidden = false;
+  }
+
+  document.getElementById('btnSair').addEventListener('click', () => {
+    localStorage.removeItem('usuarioLogado');
+    window.location.href = 'login.html';
+  });
+</script>
 
 </body>
 </html>

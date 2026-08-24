@@ -89,6 +89,41 @@
   .menu a:hover {
     border-bottom-color: var(--bege);
   }
+
+  .perfil {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 18px;
+    border-left: 1px solid rgba(246, 239, 227, 0.45);
+    font-size: 12px;
+  }
+
+  .perfil-saudacao,
+  .perfil-email {
+    white-space: nowrap;
+  }
+
+  .perfil-email {
+    color: var(--bege-escuro);
+  }
+
+  .perfil button {
+    color: var(--bege);
+    background: transparent;
+    border: 1px solid var(--bege-escuro);
+    border-radius: 3px;
+    padding: 5px 9px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  .perfil button:hover {
+    background-color: var(--bege);
+    color: var(--vermelho);
+  }
   
   /* Destaque */
   .destaque {
@@ -419,6 +454,14 @@
   
     .menu {
       gap: 14px;
+    }
+
+    .perfil {
+      width: 100%;
+      padding-left: 0;
+      padding-top: 12px;
+      border-left: none;
+      border-top: 1px solid rgba(246, 239, 227, 0.45);
     }
   
     .destaque h2 {
