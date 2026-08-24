@@ -99,13 +99,8 @@
     font-size: 12px;
   }
 
-  .perfil-saudacao,
-  .perfil-email {
+  .perfil-saudacao {
     white-space: nowrap;
-  }
-
-  .perfil-email {
-    color: var(--bege-escuro);
   }
 
   .perfil button {
