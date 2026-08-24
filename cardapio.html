@@ -23,6 +23,9 @@
       <a href="#doces">Doces</a>
       <a href="#bebidas">Bebidas</a>
       <a href="#ajuda">Ajuda e Suporte</a>
+      <button type="button" class="botao-carrinho" id="btnCarrinho" aria-label="Abrir carrinho">
+        Carrinho <span id="quantidadeCarrinho">0</span>
+      </button>
       <div class="perfil" id="perfil" hidden>
         <span class="perfil-saudacao">Olá, <strong id="perfilNome"></strong></span>
         <button type="button" id="btnSair">Sair</button>
@@ -384,6 +387,19 @@
   </div>
 </footer>
 
+<div class="carrinho-painel" id="carrinhoPainel" hidden>
+  <div class="carrinho-cabecalho">
+    <h2>Seu carrinho</h2>
+    <button type="button" class="fechar-carrinho" id="fecharCarrinho" aria-label="Fechar carrinho">&times;</button>
+  </div>
+  <div class="carrinho-itens" id="carrinhoItens"></div>
+  <div class="carrinho-rodape">
+    <div class="carrinho-total"><span>Total</span><strong id="carrinhoTotal">R$ 0,00</strong></div>
+    <button type="button" class="finalizar-compra" id="finalizarCompra" disabled>Finalizar compra</button>
+  </div>
+</div>
+<div class="carrinho-overlay" id="carrinhoOverlay" hidden></div>
+
 <script>
   let usuario = null;
   try {
@@ -402,6 +418,94 @@
     localStorage.removeItem('usuarioLogado');
     window.location.href = 'login.html';
   });
+
+  const chaveCarrinho = 'carrinhoPizzaria';
+  let carrinho = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
+  const painelCarrinho = document.getElementById('carrinhoPainel');
+  const overlayCarrinho = document.getElementById('carrinhoOverlay');
+  const itensCarrinho = document.getElementById('carrinhoItens');
+  const totalCarrinho = document.getElementById('carrinhoTotal');
+  const quantidadeCarrinho = document.getElementById('quantidadeCarrinho');
+  const finalizarCompra = document.getElementById('finalizarCompra');
+
+  const formatarPreco = valor => valor.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  });
+
+  function salvarCarrinho() {
+    localStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+  }
+
+  function atualizarCarrinho() {
+    itensCarrinho.innerHTML = '';
+    const quantidade = carrinho.reduce((total, item) => total + item.quantidade, 0);
+    const total = carrinho.reduce((soma, item) => soma + item.preco * item.quantidade, 0);
+    quantidadeCarrinho.textContent = quantidade;
+    totalCarrinho.textContent = formatarPreco(total);
+    finalizarCompra.disabled = carrinho.length === 0;
+
+    if (carrinho.length === 0) {
+      itensCarrinho.innerHTML = '<p class="carrinho-vazio">Seu carrinho está vazio.</p>';
+      return;
+    }
+
+    carrinho.forEach(item => {
+      const linha = document.createElement('div');
+      linha.className = 'carrinho-item';
+      linha.innerHTML = `
+        <div>
+          <strong>${item.nome}</strong>
+          <span>${item.quantidade} x ${formatarPreco(item.preco)}</span>
+        </div>
+        <button type="button" data-remover="${item.id}">Remover</button>
+      `;
+      itensCarrinho.appendChild(linha);
+    });
+  }
+
+  document.querySelectorAll('.item').forEach((item, indice) => {
+    const nome = item.querySelector('h4').textContent.trim();
+    const precoTexto = item.querySelector('.preco').textContent;
+    const preco = Number(precoTexto.replace('R$', '').replace('.', '').replace(',', '.').trim());
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'botao-comprar';
+    botao.textContent = 'Comprar';
+    botao.addEventListener('click', () => {
+      const produto = carrinho.find(produtoAtual => produtoAtual.id === indice);
+      if (produto) {
+        produto.quantidade += 1;
+      } else {
+        carrinho.push({ id: indice, nome, preco, quantidade: 1 });
+      }
+      salvarCarrinho();
+      atualizarCarrinho();
+    });
+    const destinoBotao = item.querySelector('.item-conteudo') || item;
+    destinoBotao.appendChild(botao);
+  });
+
+  itensCarrinho.addEventListener('click', evento => {
+    const botaoRemover = evento.target.closest('[data-remover]');
+    if (!botaoRemover) return;
+    carrinho = carrinho.filter(item => item.id !== Number(botaoRemover.dataset.remover));
+    salvarCarrinho();
+    atualizarCarrinho();
+  });
+
+  function alternarCarrinho(aberto) {
+    painelCarrinho.hidden = !aberto;
+    overlayCarrinho.hidden = !aberto;
+  }
+
+  document.getElementById('btnCarrinho').addEventListener('click', () => alternarCarrinho(true));
+  document.getElementById('fecharCarrinho').addEventListener('click', () => alternarCarrinho(false));
+  overlayCarrinho.addEventListener('click', () => alternarCarrinho(false));
+  finalizarCompra.addEventListener('click', () => {
+    alert('Seu carrinho está pronto! A finalização do pedido será disponibilizada em breve.');
+  });
+  atualizarCarrinho();
 </script>
 
 </body>
