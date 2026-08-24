@@ -70,7 +70,7 @@
     btn.textContent = 'CRIANDO...';
  
     try {
-      const resposta = await fetch('/api/cadastro', {
+      const resposta = await fetch('https://pizzaria-asml.onrender.com/api/cadastro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
