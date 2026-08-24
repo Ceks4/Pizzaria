@@ -235,29 +235,28 @@
     background-color: #fff;
     border: 1px solid var(--borda);
     border-radius: 4px;
-    padding: 20px;
-    min-height: 164px;
+    padding: 0 20px 20px;
+    overflow: hidden;
     transition: border-color 0.2s ease, transform 0.2s ease;
   }
 
-  .item:has(.foto) {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
   .item-conteudo {
-    flex: 1;
     min-width: 0;
   }
 
   .foto {
-    width: 120px;
-    height: 120px;
-    flex: 0 0 120px;
+    width: calc(100% + 40px);
+    height: 190px;
+    margin: 0 -20px 18px;
     display: block;
     object-fit: cover;
-    border-radius: 4px;
+    object-position: center;
+    background-color: #fff;
+  }
+
+  .foto-item {
+    object-fit: contain;
+    padding: 16px;
   }
   
   .item:hover {
@@ -600,14 +599,8 @@
       grid-template-columns: 1fr;
     }
 
-    .item:has(.foto) {
-      align-items: flex-start;
-    }
-
     .foto {
-      width: 96px;
-      height: 96px;
-      flex-basis: 96px;
+      height: 160px;
     }
 
     .topo-conteudo {
