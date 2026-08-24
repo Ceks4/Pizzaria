@@ -102,12 +102,20 @@
   }
 
   .botao-carrinho {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     background-color: var(--bege);
     color: var(--vermelho);
     padding: 7px 10px;
   }
 
-  .botao-carrinho span {
+  .icone-carrinho {
+    font-size: 17px;
+    line-height: 1;
+  }
+
+  .contador-carrinho {
     display: inline-flex;
     align-items: center;
     justify-content: center;

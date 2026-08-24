@@ -23,8 +23,10 @@
       <a href="#doces">Doces</a>
       <a href="#bebidas">Bebidas</a>
       <a href="#ajuda">Ajuda e Suporte</a>
-      <button type="button" class="botao-carrinho" id="btnCarrinho" aria-label="Abrir carrinho">
-        Carrinho <span id="quantidadeCarrinho">0</span>
+      <button type="button" class="botao-carrinho" id="btnCarrinho" aria-label="Abrir carrinho" aria-expanded="false">
+        <span class="icone-carrinho" aria-hidden="true">&#128722;</span>
+        <span>Carrinho</span>
+        <span class="contador-carrinho" id="quantidadeCarrinho">0</span>
       </button>
       <div class="perfil" id="perfil" hidden>
         <span class="perfil-saudacao">Olá, <strong id="perfilNome"></strong></span>
@@ -497,9 +499,12 @@
   function alternarCarrinho(aberto) {
     painelCarrinho.hidden = !aberto;
     overlayCarrinho.hidden = !aberto;
+    document.getElementById('btnCarrinho').setAttribute('aria-expanded', aberto);
   }
 
-  document.getElementById('btnCarrinho').addEventListener('click', () => alternarCarrinho(true));
+  document.getElementById('btnCarrinho').addEventListener('click', () => {
+    alternarCarrinho(painelCarrinho.hidden);
+  });
   document.getElementById('fecharCarrinho').addEventListener('click', () => alternarCarrinho(false));
   overlayCarrinho.addEventListener('click', () => alternarCarrinho(false));
   finalizarCompra.addEventListener('click', () => {
