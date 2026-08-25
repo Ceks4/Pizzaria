@@ -20,6 +20,7 @@
     .etapa { padding: 12px 6px; border-top: 4px solid #e0d8cc; color: #7a6a60; text-align: center; font-size: .78rem; }
     .etapa.ativa { border-color: #a0522d; color: #5c1f1f; font-weight: 700; }
     .resumo-cliente { margin-top: 22px; color: #3a2a24; font-size: .9rem; line-height: 1.6; }
+    .trocar-pedido { display: inline-block; margin-top: 18px; border: 0; background: transparent; color: #a0522d; cursor: pointer; font-weight: 600; }
     @media (max-width: 480px) { .busca-pedido { align-items: stretch; flex-direction: column; } .linha-status { grid-template-columns: 1fr; } .etapa { text-align: left; } }
   </style>
 </head>
@@ -31,7 +32,7 @@
   <main>
     <div class="card">
       <h2>STATUS DO PEDIDO</h2>
-      <p class="subtitulo">Informe o número recebido na confirmação</p>
+      <p class="subtitulo" id="subtituloStatus">Informe o número recebido na confirmação</p>
       <form id="formConsulta">
         <div class="busca-pedido">
           <div><label for="numeroPedido">Número do pedido</label><input type="number" id="numeroPedido" min="1" required></div>
@@ -39,6 +40,7 @@
         </div>
         <p class="mensagem" id="mensagem" role="alert"></p>
       </form>
+      <button type="button" class="trocar-pedido" id="trocarPedido" hidden>Consultar outro pedido</button>
       <section class="pedido-status" id="resultado" hidden>
         <h3 id="tituloPedido"></h3>
         <p>Status atual: <span class="status-atual" id="statusAtual"></span></p>
@@ -59,8 +61,15 @@
     const resultado = document.getElementById('resultado');
     const mensagem = document.getElementById('mensagem');
     const numeroPedido = document.getElementById('numeroPedido');
-    const idSalvo = new URLSearchParams(window.location.search).get('id') || localStorage.getItem('ultimoPedidoId');
-    if (idSalvo) numeroPedido.value = idSalvo;
+    const idNaUrl = new URLSearchParams(window.location.search).get('id');
+    const idSalvo = idNaUrl || localStorage.getItem('ultimoPedidoId');
+    const possuiPedidoSalvo = Number.isInteger(Number(idSalvo)) && Number(idSalvo) > 0;
+    if (possuiPedidoSalvo) {
+      numeroPedido.value = idSalvo;
+      form.hidden = true;
+      document.getElementById('subtituloStatus').textContent = 'Acompanhe aqui o seu último pedido';
+      document.getElementById('trocarPedido').hidden = false;
+    }
 
     async function lerResposta(resposta) {
       const tipo = resposta.headers.get('content-type') || '';
@@ -95,7 +104,13 @@
     }
 
     form.addEventListener('submit', async evento => { evento.preventDefault(); document.getElementById('btnConsultar').disabled = true; await consultarPedido(); document.getElementById('btnConsultar').disabled = false; });
-    if (idSalvo) consultarPedido();
+    document.getElementById('trocarPedido').addEventListener('click', () => {
+      form.hidden = false;
+      document.getElementById('trocarPedido').hidden = true;
+      document.getElementById('subtituloStatus').textContent = 'Informe o número recebido na confirmação';
+      numeroPedido.focus();
+    });
+    if (possuiPedidoSalvo) consultarPedido();
     setInterval(() => { if (!resultado.hidden) consultarPedido(); }, 30000);
   </script>
 </body>
