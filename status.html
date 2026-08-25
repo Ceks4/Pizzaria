@@ -10,6 +10,8 @@
     .pedido-status { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e0d8cc; }
     .pedido-status[hidden] { display: none; }
     .pedido-status h3 { color: #5c1f1f; margin-bottom: 8px; }
+    .pedido-item { padding: 20px 0; border-bottom: 1px solid #e0d8cc; }
+    .pedido-item:last-child { border-bottom: 0; }
     .status-atual { color: #a0522d; font-size: 1.25rem; font-weight: 700; }
     .linha-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
     .etapa { padding: 12px 6px; border-top: 4px solid #e0d8cc; color: #7a6a60; text-align: center; font-size: .78rem; }
@@ -29,20 +31,13 @@
       <p class="subtitulo">Seu pedido salvo na sua conta</p>
       <p class="mensagem" id="mensagem" role="alert"></p>
       <section class="pedido-status" id="resultado" hidden>
-        <h3 id="tituloPedido"></h3>
-        <p>Status atual: <span class="status-atual" id="statusAtual"></span></p>
-        <div class="linha-status">
-          <div class="etapa" data-status="em_preparacao">Em preparação</div>
-          <div class="etapa" data-status="saiu_para_entrega">Saiu para entrega</div>
-          <div class="etapa" data-status="concluido">Concluído</div>
-        </div>
-        <div class="resumo-cliente" id="resumoCliente"></div>
+        <div id="listaPedidos"></div>
       </section>
     </div>
   </main>
   <script>
     const API = 'https://pizzaria-asml.onrender.com';
-    const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Concluído' };
+    const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Finalizado' };
     const etapas = ['em_preparacao', 'saiu_para_entrega', 'concluido'];
     const resultado = document.getElementById('resultado');
     const mensagem = document.getElementById('mensagem');
@@ -59,13 +54,22 @@
       return resposta.json();
     }
 
-    function mostrarPedido(pedido) {
-      document.getElementById('tituloPedido').textContent = `Pedido #${pedido.id}`;
-      document.getElementById('statusAtual').textContent = nomesStatus[pedido.status] || pedido.status;
-      const indiceAtual = etapas.indexOf(pedido.status);
-      document.querySelectorAll('.etapa').forEach((etapa, indice) => etapa.classList.toggle('ativa', indice <= indiceAtual));
-      const endereco = pedido.endereco;
-      document.getElementById('resumoCliente').textContent = `Cliente: ${pedido.cliente_nome} | Total: ${Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\nEntrega: ${endereco.endereco}, ${endereco.numero}, ${endereco.cidade}/${endereco.estado}`;
+    function escaparHtml(valor) {
+      return String(valor).replace(/[&<>'"]/g, caractere => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[caractere]));
+    }
+
+    function mostrarPedidos(pedidos) {
+      const lista = document.getElementById('listaPedidos');
+      lista.innerHTML = '';
+      pedidos.forEach(pedido => {
+        const bloco = document.createElement('article');
+        bloco.className = 'pedido-item';
+        const indiceAtual = etapas.indexOf(pedido.status);
+        const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join(', ');
+        const endereco = pedido.endereco;
+        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">Finalizado</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco}, ${endereco.numero}, ${endereco.cidade}/${endereco.estado}`)}</div>`;
+        lista.appendChild(bloco);
+      });
       resultado.hidden = false;
     }
 
@@ -80,7 +84,7 @@
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(dados.erro);
         mensagem.textContent = '';
-        mostrarPedido(dados.pedido);
+        mostrarPedidos(dados.pedidos);
       } catch (erro) {
         resultado.hidden = true;
         mensagem.textContent = erro.message || 'Não foi possível consultar o pedido.';

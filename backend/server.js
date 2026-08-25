@@ -127,7 +127,7 @@ app.post('/api/pedidos', async (req, res) => {
   }
 });
 
-// Consulta o último pedido do cliente pelo e-mail da conta
+// Consulta todos os pedidos do cliente pelo e-mail da conta
 app.get('/api/pedidos/cliente', async (req, res) => {
   const email = String(req.query.email || '').trim().toLowerCase();
   if (!email) {
@@ -137,13 +137,13 @@ app.get('/api/pedidos/cliente', async (req, res) => {
   try {
     const resultado = await pool.query(
       `SELECT id, cliente_nome, itens, endereco, total, status, criado_em
-       FROM pedidos WHERE LOWER(cliente_email) = $1 ORDER BY criado_em DESC LIMIT 1`,
+       FROM pedidos WHERE LOWER(cliente_email) = $1 ORDER BY criado_em DESC`,
       [email]
     );
     if (resultado.rows.length === 0) {
       return res.status(404).json({ sucesso: false, erro: 'Nenhum pedido encontrado para esta conta.' });
     }
-    res.json({ sucesso: true, pedido: resultado.rows[0] });
+    res.json({ sucesso: true, pedidos: resultado.rows });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ sucesso: false, erro: 'Não foi possível consultar o pedido.' });
