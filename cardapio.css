@@ -249,9 +249,10 @@
     height: 190px;
     margin: 0 -20px 18px;
     display: block;
-    object-fit: cover;
+    object-fit: contain;
     object-position: center;
     background-color: #fff;
+    padding: 10px;
   }
 
   .foto-item {
