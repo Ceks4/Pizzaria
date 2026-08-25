@@ -21,9 +21,11 @@ async function prepararTabelaPedidos() {
       itens JSONB NOT NULL,
       endereco JSONB NOT NULL,
       total NUMERIC(10, 2) NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'em_preparacao',
       criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await pool.query("ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'em_preparacao'");
 }
 
 function exigirAdmin(req, res, next) {
@@ -125,14 +127,59 @@ app.post('/api/pedidos', async (req, res) => {
   }
 });
 
+// Consulta pública do status pelo número do pedido
+app.get('/api/pedidos/:id', async (req, res) => {
+  const pedidoId = Number(req.params.id);
+  if (!Number.isInteger(pedidoId) || pedidoId < 1) {
+    return res.status(400).json({ sucesso: false, erro: 'Número de pedido inválido.' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      'SELECT id, cliente_nome, itens, endereco, total, status, criado_em FROM pedidos WHERE id = $1',
+      [pedidoId]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ sucesso: false, erro: 'Pedido não encontrado.' });
+    }
+    res.json({ sucesso: true, pedido: resultado.rows[0] });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ sucesso: false, erro: 'Não foi possível consultar o pedido.' });
+  }
+});
+
 // Lista pedidos somente para usuários autenticados no painel
 app.get('/api/admin/pedidos', exigirAdmin, async (req, res) => {
   try {
-    const resultado = await pool.query('SELECT id, cliente_nome, cliente_email, itens, endereco, total, criado_em FROM pedidos ORDER BY criado_em DESC');
+    const resultado = await pool.query('SELECT id, cliente_nome, cliente_email, itens, endereco, total, status, criado_em FROM pedidos ORDER BY criado_em DESC');
     res.json({ sucesso: true, pedidos: resultado.rows });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ sucesso: false, erro: 'Não foi possível carregar os pedidos.' });
+  }
+});
+
+app.patch('/api/admin/pedidos/:id/status', exigirAdmin, async (req, res) => {
+  const pedidoId = Number(req.params.id);
+  const statusPermitidos = ['em_preparacao', 'saiu_para_entrega', 'concluido'];
+  const { status } = req.body;
+  if (!Number.isInteger(pedidoId) || !statusPermitidos.includes(status)) {
+    return res.status(400).json({ sucesso: false, erro: 'Status inválido.' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      'UPDATE pedidos SET status = $1 WHERE id = $2 RETURNING id, status',
+      [status, pedidoId]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ sucesso: false, erro: 'Pedido não encontrado.' });
+    }
+    res.json({ sucesso: true, pedido: resultado.rows[0] });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ sucesso: false, erro: 'Não foi possível atualizar o status.' });
   }
 });
  

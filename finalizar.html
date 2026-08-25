@@ -56,6 +56,7 @@
     }
     .btn-cep:hover { background: #7a3a20; }
     .btn-cep:disabled { background: #c9b8ac; cursor: not-allowed; }
+    .link-status { display: inline-block; margin-top: 12px; color: #a0522d; font-size: .85rem; font-weight: 600; }
     @media (max-width: 480px) {
       .campo-cep { align-items: stretch; flex-direction: column; gap: 8px; }
     }
@@ -258,10 +259,16 @@
         if (!resposta.ok || !dados.sucesso) throw new Error(dados.erro);
 
         localStorage.setItem('enderecoEntrega', JSON.stringify(endereco));
+        localStorage.setItem('ultimoPedidoId', String(dados.pedidoId));
         localStorage.removeItem(chaveCarrinho);
         mensagem.textContent = `Pedido #${dados.pedidoId} confirmado! Obrigado pela preferência.`;
         mensagem.className = 'mensagem sucesso';
         btnFinalizar.textContent = 'PEDIDO CONFIRMADO';
+        const linkStatus = document.createElement('a');
+        linkStatus.className = 'link-status';
+        linkStatus.href = `status.html?id=${dados.pedidoId}`;
+        linkStatus.textContent = 'Acompanhar status do pedido';
+        mensagem.insertAdjacentElement('afterend', linkStatus);
       } catch (erro) {
         mensagem.textContent = 'Não foi possível registrar o pedido. Tente novamente.';
         mensagem.className = 'mensagem erro';

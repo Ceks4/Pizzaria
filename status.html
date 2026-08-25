@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status do pedido - LosPizzanitos</title>
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    .card { max-width: 560px; }
+    .busca-pedido { display: flex; gap: 10px; align-items: flex-end; }
+    .busca-pedido > div { flex: 1; }
+    .btn-consultar { background: #a0522d; color: #fff; border: 0; border-radius: 8px; padding: 12px 16px; font-weight: 700; cursor: pointer; }
+    .btn-consultar:hover { background: #7a3a20; }
+    .btn-consultar:disabled { background: #c9b8ac; cursor: not-allowed; }
+    .pedido-status { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e0d8cc; }
+    .pedido-status[hidden] { display: none; }
+    .pedido-status h3 { color: #5c1f1f; margin-bottom: 8px; }
+    .status-atual { color: #a0522d; font-size: 1.25rem; font-weight: 700; }
+    .linha-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
+    .etapa { padding: 12px 6px; border-top: 4px solid #e0d8cc; color: #7a6a60; text-align: center; font-size: .78rem; }
+    .etapa.ativa { border-color: #a0522d; color: #5c1f1f; font-weight: 700; }
+    .resumo-cliente { margin-top: 22px; color: #3a2a24; font-size: .9rem; line-height: 1.6; }
+    @media (max-width: 480px) { .busca-pedido { align-items: stretch; flex-direction: column; } .linha-status { grid-template-columns: 1fr; } .etapa { text-align: left; } }
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <div class="marca"><span class="bolinha"></span><div><h1>LOSPIZZANITOS</h1><p>Acompanhe seu pedido</p></div></div>
+    <nav><a href="cardapio.html">CARDÁPIO</a></nav>
+  </header>
+  <main>
+    <div class="card">
+      <h2>STATUS DO PEDIDO</h2>
+      <p class="subtitulo">Informe o número recebido na confirmação</p>
+      <form id="formConsulta">
+        <div class="busca-pedido">
+          <div><label for="numeroPedido">Número do pedido</label><input type="number" id="numeroPedido" min="1" required></div>
+          <button type="submit" class="btn-consultar" id="btnConsultar">CONSULTAR</button>
+        </div>
+        <p class="mensagem" id="mensagem" role="alert"></p>
+      </form>
+      <section class="pedido-status" id="resultado" hidden>
+        <h3 id="tituloPedido"></h3>
+        <p>Status atual: <span class="status-atual" id="statusAtual"></span></p>
+        <div class="linha-status">
+          <div class="etapa" data-status="em_preparacao">Em preparação</div>
+          <div class="etapa" data-status="saiu_para_entrega">Saiu para entrega</div>
+          <div class="etapa" data-status="concluido">Concluído</div>
+        </div>
+        <div class="resumo-cliente" id="resumoCliente"></div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const API = 'https://pizzaria-asml.onrender.com';
+    const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Concluído' };
+    const etapas = ['em_preparacao', 'saiu_para_entrega', 'concluido'];
+    const form = document.getElementById('formConsulta');
+    const resultado = document.getElementById('resultado');
+    const mensagem = document.getElementById('mensagem');
+    const numeroPedido = document.getElementById('numeroPedido');
+    const idSalvo = new URLSearchParams(window.location.search).get('id') || localStorage.getItem('ultimoPedidoId');
+    if (idSalvo) numeroPedido.value = idSalvo;
+
+    async function lerResposta(resposta) {
+      const tipo = resposta.headers.get('content-type') || '';
+      if (!tipo.includes('application/json')) throw new Error('O servidor ainda não foi atualizado. Publique o backend no Render.');
+      return resposta.json();
+    }
+
+    function mostrarPedido(pedido) {
+      document.getElementById('tituloPedido').textContent = `Pedido #${pedido.id}`;
+      document.getElementById('statusAtual').textContent = nomesStatus[pedido.status] || pedido.status;
+      const indiceAtual = etapas.indexOf(pedido.status);
+      document.querySelectorAll('.etapa').forEach((etapa, indice) => etapa.classList.toggle('ativa', indice <= indiceAtual));
+      const endereco = pedido.endereco;
+      document.getElementById('resumoCliente').textContent = `Cliente: ${pedido.cliente_nome} | Total: ${Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}\nEntrega: ${endereco.endereco}, ${endereco.numero}, ${endereco.cidade}/${endereco.estado}`;
+      resultado.hidden = false;
+    }
+
+    async function consultarPedido() {
+      const id = Number(numeroPedido.value);
+      if (!Number.isInteger(id) || id < 1) return;
+      try {
+        const resposta = await fetch(`${API}/api/pedidos/${id}`);
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(dados.erro);
+        mensagem.textContent = '';
+        mostrarPedido(dados.pedido);
+      } catch (erro) {
+        resultado.hidden = true;
+        mensagem.textContent = erro.message || 'Não foi possível consultar o pedido.';
+        mensagem.className = 'mensagem erro';
+      }
+    }
+
+    form.addEventListener('submit', async evento => { evento.preventDefault(); document.getElementById('btnConsultar').disabled = true; await consultarPedido(); document.getElementById('btnConsultar').disabled = false; });
+    if (idSalvo) consultarPedido();
+    setInterval(() => { if (!resultado.hidden) consultarPedido(); }, 30000);
+  </script>
+</body>
+</html>

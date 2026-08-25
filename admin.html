@@ -19,6 +19,7 @@
     td { color: #3a2a24; }
     .detalhes { white-space: pre-line; }
     .vazio { color: #7a6a60; padding: 24px 0; }
+    .status-select { border: 1px solid #e0d8cc; border-radius: 6px; padding: 8px; color: #3a2a24; background: #faf8f4; }
     #painelConteudo[hidden], #loginAdmin[hidden] { display: none; }
     @media (max-width: 600px) { .painel-cabecalho { align-items: flex-start; flex-direction: column; } }
   </style>
@@ -44,7 +45,7 @@
       <section id="painelConteudo" hidden>
         <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div>
         <p class="mensagem" id="mensagemPedidos" role="status"></p>
-        <div class="tabela-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Entrega</th><th>Total</th><th>Data</th></tr></thead><tbody id="listaPedidos"></tbody></table></div>
+        <div class="tabela-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Entrega</th><th>Total</th><th>Status</th><th>Data</th></tr></thead><tbody id="listaPedidos"></tbody></table></div>
       </section>
     </div>
   </main>
@@ -91,16 +92,38 @@
         const dados = await lerResposta(resposta);
         if (resposta.status === 401) { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
         if (!resposta.ok) throw new Error(dados.erro);
-        if (dados.pedidos.length === 0) { lista.innerHTML = '<tr><td class="vazio" colspan="6">Nenhum pedido recebido ainda.</td></tr>'; return; }
+        if (dados.pedidos.length === 0) { lista.innerHTML = '<tr><td class="vazio" colspan="7">Nenhum pedido recebido ainda.</td></tr>'; return; }
         dados.pedidos.forEach(pedido => {
           const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join('\n');
           const endereco = pedido.endereco;
           const destino = `${endereco.endereco}, ${endereco.numero}\n${endereco.bairro} - ${endereco.cidade}/${endereco.estado}\nCEP: ${endereco.cep}`;
           const linha = document.createElement('tr');
-          [pedido.id, `${pedido.cliente_nome}\n${pedido.cliente_email || ''}`, itens, destino, formatarPreco(pedido.total), new Date(pedido.criado_em).toLocaleString('pt-BR')].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
+          [pedido.id, `${pedido.cliente_nome}\n${pedido.cliente_email || ''}`, itens, destino, formatarPreco(pedido.total)].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
+          const celulaStatus = document.createElement('td');
+          const seletorStatus = document.createElement('select');
+          seletorStatus.className = 'status-select';
+          [['em_preparacao', 'Em preparação'], ['saiu_para_entrega', 'Saiu para entrega'], ['concluido', 'Concluído']].forEach(([valor, rotulo]) => { const opcao = document.createElement('option'); opcao.value = valor; opcao.textContent = rotulo; opcao.selected = pedido.status === valor; seletorStatus.appendChild(opcao); });
+          seletorStatus.addEventListener('change', () => atualizarStatus(pedido.id, seletorStatus));
+          celulaStatus.appendChild(seletorStatus);
+          linha.appendChild(celulaStatus);
+          const celulaData = document.createElement('td');
+          celulaData.textContent = new Date(pedido.criado_em).toLocaleString('pt-BR');
+          linha.appendChild(celulaData);
           lista.appendChild(linha);
         });
       } catch (erro) { mensagem.textContent = erro.message || 'Não foi possível carregar os pedidos.'; mensagem.className = 'mensagem erro'; }
+    }
+    async function atualizarStatus(pedidoId, seletor) {
+      seletor.disabled = true;
+      try {
+        const resposta = await fetch(`${API}/api/admin/pedidos/${pedidoId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSalvo()}` }, body: JSON.stringify({ status: seletor.value }) });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(dados.erro);
+      } catch (erro) {
+        document.getElementById('mensagemPedidos').textContent = erro.message || 'Não foi possível atualizar o status.';
+        document.getElementById('mensagemPedidos').className = 'mensagem erro';
+        carregarPedidos();
+      } finally { seletor.disabled = false; }
     }
     document.getElementById('btnSairAdmin').addEventListener('click', () => { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); });
     if (tokenSalvo()) mostrarPainel();
