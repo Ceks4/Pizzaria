@@ -185,7 +185,7 @@ app.get('/api/admin/pedidos', exigirAdmin, async (req, res) => {
 
 app.patch('/api/admin/pedidos/:id/status', exigirAdmin, async (req, res) => {
   const pedidoId = Number(req.params.id);
-  const statusPermitidos = ['em_preparacao', 'saiu_para_entrega', 'concluido'];
+  const statusPermitidos = ['em_preparacao', 'saiu_para_entrega', 'concluido', 'cancelado'];
   const { status } = req.body;
   if (!Number.isInteger(pedidoId) || !statusPermitidos.includes(status)) {
     return res.status(400).json({ sucesso: false, erro: 'Status inválido.' });

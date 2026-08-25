@@ -20,6 +20,9 @@
     .detalhes { white-space: pre-line; }
     .vazio { color: #7a6a60; padding: 24px 0; }
     .status-select { border: 1px solid #e0d8cc; border-radius: 6px; padding: 8px; color: #3a2a24; background: #faf8f4; }
+    .filtros { display: flex; gap: 10px; margin-bottom: 18px; }
+    .filtros input, .filtros select { margin: 0; }
+    .filtros input { flex: 1; }
     #painelConteudo[hidden], #loginAdmin[hidden] { display: none; }
     @media (max-width: 600px) { .painel-cabecalho { align-items: flex-start; flex-direction: column; } }
   </style>
@@ -43,8 +46,9 @@
       </section>
 
       <section id="painelConteudo" hidden>
-        <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div>
+        <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><div><button class="btn-secundario" id="btnAtualizar" type="button">ATUALIZAR</button> <button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div></div>
         <p class="mensagem" id="mensagemPedidos" role="status"></p>
+        <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar por cliente, e-mail ou número"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select></div>
         <div class="tabela-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Entrega</th><th>Total</th><th>Status</th><th>Data</th></tr></thead><tbody id="listaPedidos"></tbody></table></div>
       </section>
     </div>
@@ -54,6 +58,7 @@
     const loginAdmin = document.getElementById('loginAdmin');
     const painelConteudo = document.getElementById('painelConteudo');
     const tokenSalvo = () => sessionStorage.getItem('tokenAdmin');
+    let pedidos = [];
     const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     async function lerResposta(resposta) {
@@ -83,36 +88,50 @@
       finally { botao.disabled = false; }
     });
 
-    async function carregarPedidos() {
+    function renderizarPedidos() {
       const lista = document.getElementById('listaPedidos');
-      const mensagem = document.getElementById('mensagemPedidos');
       lista.innerHTML = '';
+      const busca = document.getElementById('buscaPedidos').value.toLowerCase().trim();
+      const status = document.getElementById('filtroStatus').value;
+      const filtrados = pedidos.filter(pedido => {
+        const correspondeBusca = !busca || String(pedido.id).includes(busca) || pedido.cliente_nome.toLowerCase().includes(busca) || (pedido.cliente_email || '').toLowerCase().includes(busca);
+        return correspondeBusca && (!status || pedido.status === status);
+      });
+      if (filtrados.length === 0) { lista.innerHTML = '<tr><td class="vazio" colspan="7">Nenhum pedido encontrado.</td></tr>'; return; }
+      filtrados.forEach(pedido => {
+        const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join('\n');
+        const endereco = pedido.endereco;
+        const destino = `${endereco.endereco}, ${endereco.numero}\n${endereco.bairro} - ${endereco.cidade}/${endereco.estado}\nCEP: ${endereco.cep}`;
+        const linha = document.createElement('tr');
+        [pedido.id, `${pedido.cliente_nome}\n${pedido.cliente_email || ''}`, itens, destino, formatarPreco(pedido.total)].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
+        const celulaStatus = document.createElement('td');
+        const seletorStatus = document.createElement('select');
+        seletorStatus.className = 'status-select';
+        [['em_preparacao', 'Em preparação'], ['saiu_para_entrega', 'Saiu para entrega'], ['concluido', 'Finalizado'], ['cancelado', 'Cancelado']].forEach(([valor, rotulo]) => { const opcao = document.createElement('option'); opcao.value = valor; opcao.textContent = rotulo; opcao.selected = pedido.status === valor; seletorStatus.appendChild(opcao); });
+        seletorStatus.addEventListener('change', () => atualizarStatus(pedido.id, seletorStatus));
+        celulaStatus.appendChild(seletorStatus);
+        linha.appendChild(celulaStatus);
+        const celulaData = document.createElement('td');
+        celulaData.textContent = new Date(pedido.criado_em).toLocaleString('pt-BR');
+        linha.appendChild(celulaData);
+        lista.appendChild(linha);
+      });
+    }
+
+    async function carregarPedidos() {
+      const mensagem = document.getElementById('mensagemPedidos');
       try {
         const resposta = await fetch(`${API}/api/admin/pedidos`, { headers: { Authorization: `Bearer ${tokenSalvo()}` } });
         const dados = await lerResposta(resposta);
         if (resposta.status === 401) { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
         if (!resposta.ok) throw new Error(dados.erro);
-        if (dados.pedidos.length === 0) { lista.innerHTML = '<tr><td class="vazio" colspan="7">Nenhum pedido recebido ainda.</td></tr>'; return; }
-        dados.pedidos.forEach(pedido => {
-          const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join('\n');
-          const endereco = pedido.endereco;
-          const destino = `${endereco.endereco}, ${endereco.numero}\n${endereco.bairro} - ${endereco.cidade}/${endereco.estado}\nCEP: ${endereco.cep}`;
-          const linha = document.createElement('tr');
-          [pedido.id, `${pedido.cliente_nome}\n${pedido.cliente_email || ''}`, itens, destino, formatarPreco(pedido.total)].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
-          const celulaStatus = document.createElement('td');
-          const seletorStatus = document.createElement('select');
-          seletorStatus.className = 'status-select';
-          [['em_preparacao', 'Em preparação'], ['saiu_para_entrega', 'Saiu para entrega'], ['concluido', 'Concluído']].forEach(([valor, rotulo]) => { const opcao = document.createElement('option'); opcao.value = valor; opcao.textContent = rotulo; opcao.selected = pedido.status === valor; seletorStatus.appendChild(opcao); });
-          seletorStatus.addEventListener('change', () => atualizarStatus(pedido.id, seletorStatus));
-          celulaStatus.appendChild(seletorStatus);
-          linha.appendChild(celulaStatus);
-          const celulaData = document.createElement('td');
-          celulaData.textContent = new Date(pedido.criado_em).toLocaleString('pt-BR');
-          linha.appendChild(celulaData);
-          lista.appendChild(linha);
-        });
+        pedidos = dados.pedidos;
+        renderizarPedidos();
       } catch (erro) { mensagem.textContent = erro.message || 'Não foi possível carregar os pedidos.'; mensagem.className = 'mensagem erro'; }
     }
+    document.getElementById('buscaPedidos').addEventListener('input', renderizarPedidos);
+    document.getElementById('filtroStatus').addEventListener('change', renderizarPedidos);
+    document.getElementById('btnAtualizar').addEventListener('click', carregarPedidos);
     async function atualizarStatus(pedidoId, seletor) {
       seletor.disabled = true;
       try {

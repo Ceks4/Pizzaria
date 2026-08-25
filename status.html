@@ -37,7 +37,7 @@
   </main>
   <script>
     const API = 'https://pizzaria-asml.onrender.com';
-    const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Finalizado' };
+    const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Finalizado', cancelado: 'Cancelado' };
     const etapas = ['em_preparacao', 'saiu_para_entrega', 'concluido'];
     const resultado = document.getElementById('resultado');
     const mensagem = document.getElementById('mensagem');
@@ -67,7 +67,7 @@
         const indiceAtual = etapas.indexOf(pedido.status);
         const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join(', ');
         const endereco = pedido.endereco;
-        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">Finalizado</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco}, ${endereco.numero}, ${endereco.cidade}/${endereco.estado}`)}</div>`;
+        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">${pedido.status === 'cancelado' ? 'Cancelado' : 'Finalizado'}</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco}, ${endereco.numero}, ${endereco.cidade}/${endereco.estado}`)}</div>`;
         lista.appendChild(bloco);
       });
       resultado.hidden = false;
