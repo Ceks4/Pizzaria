@@ -150,6 +150,31 @@ app.get('/api/pedidos/cliente', async (req, res) => {
   }
 });
 
+// Permite ao cliente cancelar o próprio pedido enquanto ele ainda está em preparação
+app.patch('/api/pedidos/cliente/:id/cancelar', async (req, res) => {
+  const pedidoId = Number(req.params.id);
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!Number.isInteger(pedidoId) || pedidoId < 1 || !email) {
+    return res.status(400).json({ sucesso: false, erro: 'Dados para cancelamento inválidos.' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `UPDATE pedidos SET status = 'cancelado'
+       WHERE id = $1 AND LOWER(cliente_email) = $2 AND status = 'em_preparacao'
+       RETURNING id, status`,
+      [pedidoId, email]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(409).json({ sucesso: false, erro: 'Este pedido não pode mais ser cancelado.' });
+    }
+    res.json({ sucesso: true, pedido: resultado.rows[0] });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ sucesso: false, erro: 'Não foi possível cancelar o pedido.' });
+  }
+});
+
 // Consulta pública do status pelo número do pedido
 app.get('/api/pedidos/:id', async (req, res) => {
   const pedidoId = Number(req.params.id);

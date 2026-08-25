@@ -17,6 +17,9 @@
     .etapa { padding: 12px 6px; border-top: 4px solid #e0d8cc; color: #7a6a60; text-align: center; font-size: .78rem; }
     .etapa.ativa { border-color: #a0522d; color: #5c1f1f; font-weight: 700; }
     .resumo-cliente { margin-top: 22px; color: #3a2a24; font-size: .9rem; line-height: 1.6; }
+    .btn-cancelar { margin-top: 16px; border: 1px solid #b02a2a; border-radius: 6px; padding: 9px 12px; background: transparent; color: #b02a2a; cursor: pointer; font-weight: 600; }
+    .btn-cancelar:hover { background: #b02a2a; color: #fff; }
+    .btn-cancelar:disabled { opacity: .55; cursor: not-allowed; }
     @media (max-width: 480px) { .linha-status { grid-template-columns: 1fr; } .etapa { text-align: left; } }
   </style>
 </head>
@@ -67,10 +70,28 @@
         const indiceAtual = etapas.indexOf(pedido.status);
         const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join(', ');
         const endereco = pedido.endereco;
-        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">${pedido.status === 'cancelado' ? 'Cancelado' : 'Finalizado'}</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco}, ${endereco.numero}, ${endereco.cidade}/${endereco.estado}`)}</div>`;
+        const podeCancelar = pedido.status === 'em_preparacao';
+        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">${pedido.status === 'cancelado' ? 'Cancelado' : 'Finalizado'}</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco}, ${endereco.numero}, ${endereco.cidade}/${endereco.estado}`)}</div>${podeCancelar ? '<button type="button" class="btn-cancelar">Cancelar pedido</button>' : ''}`;
+        if (podeCancelar) bloco.querySelector('.btn-cancelar').addEventListener('click', () => cancelarPedido(pedido.id, bloco));
         lista.appendChild(bloco);
       });
       resultado.hidden = false;
+    }
+
+    async function cancelarPedido(id, bloco) {
+      if (!confirm('Deseja realmente cancelar este pedido?')) return;
+      const botao = bloco.querySelector('.btn-cancelar');
+      botao.disabled = true;
+      try {
+        const resposta = await fetch(`${API}/api/pedidos/cliente/${id}/cancelar`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: emailCliente }) });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(dados.erro);
+        await consultarPedido();
+      } catch (erro) {
+        mensagem.textContent = erro.message || 'Não foi possível cancelar o pedido.';
+        mensagem.className = 'mensagem erro';
+        botao.disabled = false;
+      }
     }
 
     async function consultarPedido() {
