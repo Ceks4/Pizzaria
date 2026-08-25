@@ -526,7 +526,9 @@
   document.getElementById('fecharCarrinho').addEventListener('click', () => alternarCarrinho(false));
   overlayCarrinho.addEventListener('click', () => alternarCarrinho(false));
   finalizarCompra.addEventListener('click', () => {
-    alert('Seu carrinho está pronto! A finalização do pedido será disponibilizada em breve.');
+    if (carrinho.length > 0) {
+      window.location.href = 'finalizar.html';
+    }
   });
   atualizarCarrinho();
 </script>

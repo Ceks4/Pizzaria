@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel administrativo - LosPizzanitos</title>
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    .card { max-width: 1000px; }
+    .painel { width: 100%; }
+    .painel-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .painel-cabecalho h2 { margin: 0; }
+    .btn-secundario { border: 1px solid #a0522d; border-radius: 8px; background: transparent; color: #a0522d; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+    .btn-secundario:hover { background: #a0522d; color: #fff; }
+    .tabela-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 680px; }
+    th, td { padding: 13px 10px; border-bottom: 1px solid #e0d8cc; text-align: left; vertical-align: top; font-size: .86rem; }
+    th { color: #5c1f1f; font-size: .75rem; letter-spacing: .6px; text-transform: uppercase; }
+    td { color: #3a2a24; }
+    .detalhes { white-space: pre-line; }
+    .vazio { color: #7a6a60; padding: 24px 0; }
+    #painelConteudo[hidden], #loginAdmin[hidden] { display: none; }
+    @media (max-width: 600px) { .painel-cabecalho { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <div class="marca"><span class="bolinha"></span><div><h1>LOSPIZZANITOS</h1><p>Painel administrativo</p></div></div>
+    <nav><a href="cardapio.html">CARDÁPIO</a></nav>
+  </header>
+  <main>
+    <div class="card painel">
+      <section id="loginAdmin">
+        <h2>ACESSO ADMIN</h2>
+        <p class="subtitulo">Entre para consultar os pedidos</p>
+        <form id="formLoginAdmin">
+          <div><label for="usuarioAdmin">Usuário</label><input type="text" id="usuarioAdmin" required autocomplete="username"></div>
+          <div><label for="senhaAdmin">Senha</label><input type="password" id="senhaAdmin" required autocomplete="current-password"></div>
+          <button class="btn-principal" id="btnEntrarAdmin" type="submit">ENTRAR</button>
+          <p class="mensagem" id="mensagemAdmin" role="alert"></p>
+        </form>
+      </section>
+
+      <section id="painelConteudo" hidden>
+        <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div>
+        <p class="mensagem" id="mensagemPedidos" role="status"></p>
+        <div class="tabela-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Entrega</th><th>Total</th><th>Data</th></tr></thead><tbody id="listaPedidos"></tbody></table></div>
+      </section>
+    </div>
+  </main>
+  <script>
+    const API = 'https://pizzaria-asml.onrender.com';
+    const loginAdmin = document.getElementById('loginAdmin');
+    const painelConteudo = document.getElementById('painelConteudo');
+    const tokenSalvo = () => sessionStorage.getItem('tokenAdmin');
+    const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    async function lerResposta(resposta) {
+      const tipo = resposta.headers.get('content-type') || '';
+      if (!tipo.includes('application/json')) {
+        throw new Error('O servidor ainda não foi atualizado. Publique o backend no Render.');
+      }
+      return resposta.json();
+    }
+
+    function mostrarPainel() { loginAdmin.hidden = true; painelConteudo.hidden = false; carregarPedidos(); }
+    function mostrarLogin() { loginAdmin.hidden = false; painelConteudo.hidden = true; }
+
+    document.getElementById('formLoginAdmin').addEventListener('submit', async evento => {
+      evento.preventDefault();
+      const mensagem = document.getElementById('mensagemAdmin');
+      const botao = document.getElementById('btnEntrarAdmin');
+      botao.disabled = true;
+      mensagem.textContent = '';
+      try {
+        const resposta = await fetch(`${API}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: document.getElementById('usuarioAdmin').value, senha: document.getElementById('senhaAdmin').value }) });
+        const dados = await lerResposta(resposta);
+        if (!resposta.ok) throw new Error(dados.erro);
+        sessionStorage.setItem('tokenAdmin', dados.token);
+        mostrarPainel();
+      } catch (erro) { mensagem.textContent = erro.message || 'Não foi possível entrar.'; mensagem.className = 'mensagem erro'; }
+      finally { botao.disabled = false; }
+    });
+
+    async function carregarPedidos() {
+      const lista = document.getElementById('listaPedidos');
+      const mensagem = document.getElementById('mensagemPedidos');
+      lista.innerHTML = '';
+      try {
+        const resposta = await fetch(`${API}/api/admin/pedidos`, { headers: { Authorization: `Bearer ${tokenSalvo()}` } });
+        const dados = await lerResposta(resposta);
+        if (resposta.status === 401) { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
+        if (!resposta.ok) throw new Error(dados.erro);
+        if (dados.pedidos.length === 0) { lista.innerHTML = '<tr><td class="vazio" colspan="6">Nenhum pedido recebido ainda.</td></tr>'; return; }
+        dados.pedidos.forEach(pedido => {
+          const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join('\n');
+          const endereco = pedido.endereco;
+          const destino = `${endereco.endereco}, ${endereco.numero}\n${endereco.bairro} - ${endereco.cidade}/${endereco.estado}\nCEP: ${endereco.cep}`;
+          const linha = document.createElement('tr');
+          [pedido.id, `${pedido.cliente_nome}\n${pedido.cliente_email || ''}`, itens, destino, formatarPreco(pedido.total), new Date(pedido.criado_em).toLocaleString('pt-BR')].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
+          lista.appendChild(linha);
+        });
+      } catch (erro) { mensagem.textContent = erro.message || 'Não foi possível carregar os pedidos.'; mensagem.className = 'mensagem erro'; }
+    }
+    document.getElementById('btnSairAdmin').addEventListener('click', () => { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); });
+    if (tokenSalvo()) mostrarPainel();
+  </script>
+</body>
+</html>

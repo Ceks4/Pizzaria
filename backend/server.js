@@ -1,11 +1,38 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const pool = require('./db');
  
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+const ADMIN_USUARIO = process.env.ADMIN_USUARIO || 'Senzalitos';
+const ADMIN_SENHA = process.env.ADMIN_SENHA || 'Africanos';
+const sessoesAdmin = new Set();
+
+async function prepararTabelaPedidos() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pedidos (
+      id SERIAL PRIMARY KEY,
+      cliente_nome VARCHAR(150) NOT NULL,
+      cliente_email VARCHAR(150),
+      itens JSONB NOT NULL,
+      endereco JSONB NOT NULL,
+      total NUMERIC(10, 2) NOT NULL,
+      criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+function exigirAdmin(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token || !sessoesAdmin.has(token)) {
+    return res.status(401).json({ sucesso: false, erro: 'Acesso não autorizado.' });
+  }
+  next();
+}
  
 // Rota de cadastro
 app.post('/api/cadastro', async (req, res) => {
@@ -65,6 +92,54 @@ app.post('/api/login', async (req, res) => {
     res.json({ sucesso: false });
   }
 });
+
+// Login exclusivo do painel administrativo
+app.post('/api/admin/login', (req, res) => {
+  const { usuario, senha } = req.body;
+  if (usuario !== ADMIN_USUARIO || senha !== ADMIN_SENHA) {
+    return res.status(401).json({ sucesso: false, erro: 'Usuário ou senha inválidos.' });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  sessoesAdmin.add(token);
+  res.json({ sucesso: true, token });
+});
+
+// Registra o pedido confirmado para consulta no painel
+app.post('/api/pedidos', async (req, res) => {
+  const { nome, email, itens, endereco, total } = req.body;
+  if (!nome || !Array.isArray(itens) || itens.length === 0 || !endereco || !Number.isFinite(Number(total))) {
+    return res.status(400).json({ sucesso: false, erro: 'Dados do pedido incompletos.' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total)
+       VALUES ($1, $2, $3::jsonb, $4::jsonb, $5) RETURNING id`,
+      [nome, email || null, JSON.stringify(itens), JSON.stringify(endereco), Number(total)]
+    );
+    res.status(201).json({ sucesso: true, pedidoId: resultado.rows[0].id });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ sucesso: false, erro: 'Não foi possível registrar o pedido.' });
+  }
+});
+
+// Lista pedidos somente para usuários autenticados no painel
+app.get('/api/admin/pedidos', exigirAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query('SELECT id, cliente_nome, cliente_email, itens, endereco, total, criado_em FROM pedidos ORDER BY criado_em DESC');
+    res.json({ sucesso: true, pedidos: resultado.rows });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ sucesso: false, erro: 'Não foi possível carregar os pedidos.' });
+  }
+});
  
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+prepararTabelaPedidos()
+  .then(() => app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`)))
+  .catch(erro => {
+    console.error('Não foi possível preparar o banco de dados:', erro);
+    process.exit(1);
+  });

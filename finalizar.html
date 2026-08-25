@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finalizar pedido - LosPizzanitos</title>
+  <link rel="stylesheet" href="auth.css">
+  <style>
+    .card { max-width: 520px; }
+    .resumo-pedido {
+      background: #faf8f4;
+      border: 1px solid #e0d8cc;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 26px;
+    }
+    .resumo-pedido h3 {
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      color: #5c1f1f;
+      margin-bottom: 10px;
+    }
+    .resumo-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 0.88rem;
+      color: #3a2a24;
+      padding: 4px 0;
+    }
+    .resumo-total {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      color: #5c1f1f;
+      border-top: 1px solid #e0d8cc;
+      margin-top: 10px;
+      padding-top: 10px;
+    }
+    .campo-cep {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .campo-cep > div { flex: 1; }
+    .btn-cep {
+      background: #a0522d;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-cep:hover { background: #7a3a20; }
+    .btn-cep:disabled { background: #c9b8ac; cursor: not-allowed; }
+    @media (max-width: 480px) {
+      .campo-cep { align-items: stretch; flex-direction: column; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <span class="bolinha"></span>
+      <div>
+        <h1>LOSPIZZANITOS</h1>
+        <p>Pizzaria sabor caseiro · forno a lenha</p>
+      </div>
+    </div>
+    <nav>
+      <a href="cardapio.html">CARDÁPIO</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>FINALIZAR PEDIDO</h2>
+      <p class="subtitulo">Confirme o endereço de entrega</p>
+
+      <section class="resumo-pedido" aria-labelledby="tituloResumo">
+        <h3 id="tituloResumo">SEU PEDIDO</h3>
+        <div id="listaItens"></div>
+        <div class="resumo-total">
+          <span>Total</span>
+          <span id="totalPedido">R$ 0,00</span>
+        </div>
+      </section>
+
+      <form id="formEndereco">
+        <div class="campo-cep">
+          <div>
+            <label for="cep">CEP</label>
+            <input type="text" id="cep" name="cep" placeholder="00000-000" maxlength="9" inputmode="numeric" required>
+          </div>
+          <button type="button" class="btn-cep" id="btnBuscarCep">BUSCAR</button>
+        </div>
+
+        <div>
+          <label for="endereco">Endereço</label>
+          <input type="text" id="endereco" name="endereco" required>
+        </div>
+
+        <div class="linha-dupla">
+          <div>
+            <label for="numero">Número</label>
+            <input type="text" id="numero" name="numero" required>
+          </div>
+          <div>
+            <label for="complemento">Complemento</label>
+            <input type="text" id="complemento" name="complemento" placeholder="Opcional">
+          </div>
+        </div>
+
+        <div>
+          <label for="bairro">Bairro</label>
+          <input type="text" id="bairro" name="bairro" required>
+        </div>
+
+        <div class="linha-dupla">
+          <div>
+            <label for="cidade">Cidade</label>
+            <input type="text" id="cidade" name="cidade" required>
+          </div>
+          <div>
+            <label for="estado">Estado</label>
+            <input type="text" id="estado" name="estado" maxlength="2" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-principal" id="btnFinalizar">CONFIRMAR PEDIDO</button>
+        <p class="mensagem" id="mensagem" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    const chaveCarrinho = 'carrinhoPizzaria';
+    let carrinho = [];
+
+    try {
+      const carrinhoSalvo = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
+      carrinho = Array.isArray(carrinhoSalvo) ? carrinhoSalvo : [];
+    } catch (erro) {
+      localStorage.removeItem(chaveCarrinho);
+    }
+
+    const listaItens = document.getElementById('listaItens');
+    const totalPedido = document.getElementById('totalPedido');
+    const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+
+    async function lerResposta(resposta) {
+      const tipo = resposta.headers.get('content-type') || '';
+      if (!tipo.includes('application/json')) {
+        throw new Error('O servidor ainda não foi atualizado. Publique o backend no Render.');
+      }
+      return resposta.json();
+    }
+
+    let total = 0;
+    if (carrinho.length === 0) {
+      listaItens.innerHTML = '<p style="font-size:0.85rem;color:#7a6a60;">Nenhum item no carrinho.</p>';
+    } else {
+      carrinho.forEach(item => {
+        const quantidade = Number(item.quantidade) || 0;
+        const preco = Number(item.preco) || 0;
+        const subtotal = preco * quantidade;
+        total += subtotal;
+
+        const linha = document.createElement('div');
+        linha.className = 'resumo-item';
+        const nome = document.createElement('span');
+        nome.textContent = `${quantidade}x ${item.nome}`;
+        const valor = document.createElement('span');
+        valor.textContent = formatarPreco(subtotal);
+        linha.append(nome, valor);
+        listaItens.appendChild(linha);
+      });
+    }
+    totalPedido.textContent = formatarPreco(total);
+
+    const cepInput = document.getElementById('cep');
+    cepInput.addEventListener('input', () => {
+      let valor = cepInput.value.replace(/\D/g, '').slice(0, 8);
+      if (valor.length > 5) valor = `${valor.slice(0, 5)}-${valor.slice(5)}`;
+      cepInput.value = valor;
+    });
+
+    const btnBuscarCep = document.getElementById('btnBuscarCep');
+    btnBuscarCep.addEventListener('click', async () => {
+      const cep = cepInput.value.replace(/\D/g, '');
+      if (cep.length !== 8) {
+        alert('Digite um CEP válido.');
+        return;
+      }
+
+      btnBuscarCep.disabled = true;
+      btnBuscarCep.textContent = '...';
+      try {
+        const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        if (!resposta.ok) throw new Error('Falha na consulta');
+        const dados = await lerResposta(resposta);
+        if (dados.erro) {
+          alert('CEP não encontrado.');
+          return;
+        }
+        document.getElementById('endereco').value = dados.logradouro || '';
+        document.getElementById('bairro').value = dados.bairro || '';
+        document.getElementById('cidade').value = dados.localidade || '';
+        document.getElementById('estado').value = dados.uf || '';
+        document.getElementById('numero').focus();
+      } catch (erro) {
+        alert('Não foi possível buscar o CEP agora.');
+      } finally {
+        btnBuscarCep.disabled = false;
+        btnBuscarCep.textContent = 'BUSCAR';
+      }
+    });
+
+    const form = document.getElementById('formEndereco');
+    const mensagem = document.getElementById('mensagem');
+    const btnFinalizar = document.getElementById('btnFinalizar');
+
+    form.addEventListener('submit', async evento => {
+      evento.preventDefault();
+      mensagem.textContent = '';
+      mensagem.className = 'mensagem';
+
+      if (carrinho.length === 0) {
+        mensagem.textContent = 'Seu carrinho está vazio.';
+        mensagem.className = 'mensagem erro';
+        return;
+      }
+
+      const endereco = Object.fromEntries(new FormData(form).entries());
+      const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+      btnFinalizar.disabled = true;
+      btnFinalizar.textContent = 'REGISTRANDO...';
+
+      try {
+        const resposta = await fetch('https://pizzaria-asml.onrender.com/api/pedidos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nome: usuario?.nome || 'Cliente não identificado',
+            email: usuario?.email || null,
+            itens: carrinho,
+            endereco,
+            total
+          })
+        });
+        const dados = await resposta.json();
+        if (!resposta.ok || !dados.sucesso) throw new Error(dados.erro);
+
+        localStorage.setItem('enderecoEntrega', JSON.stringify(endereco));
+        localStorage.removeItem(chaveCarrinho);
+        mensagem.textContent = `Pedido #${dados.pedidoId} confirmado! Obrigado pela preferência.`;
+        mensagem.className = 'mensagem sucesso';
+        btnFinalizar.textContent = 'PEDIDO CONFIRMADO';
+      } catch (erro) {
+        mensagem.textContent = 'Não foi possível registrar o pedido. Tente novamente.';
+        mensagem.className = 'mensagem erro';
+        btnFinalizar.disabled = false;
+        btnFinalizar.textContent = 'CONFIRMAR PEDIDO';
+      }
+    });
+  </script>
+</body>
+</html>
