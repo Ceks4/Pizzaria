@@ -247,7 +247,7 @@
   .foto {
     width: calc(100% + 20px);
     height: 230px;
-    margin: 0 -10px 18px;
+    margin: 10px -10px 18px;
     display: block;
     object-fit: cover;
     object-position: center;
