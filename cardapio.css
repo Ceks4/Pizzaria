@@ -245,9 +245,9 @@
   }
 
   .foto {
-    width: calc(100% + 40px);
-    height: 250px;
-    margin: 0 -20px 20px;
+    width: calc(100% + 20px);
+    height: 230px;
+    margin: 0 -10px 18px;
     display: block;
     object-fit: cover;
     object-position: center;
@@ -602,7 +602,7 @@
     }
 
     .foto {
-      height: 210px;
+      height: 190px;
     }
 
     .topo-conteudo {
