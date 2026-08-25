@@ -246,13 +246,14 @@
 
   .foto {
     width: calc(100% + 40px);
-    height: 190px;
-    margin: 0 -20px 18px;
+    height: 250px;
+    margin: 0 -20px 20px;
     display: block;
     object-fit: contain;
     object-position: center;
-    background-color: #fff;
-    padding: 10px;
+    background-color: #faf8f4;
+    border-radius: 8px;
+    padding: 4px;
   }
 
   .foto-item {
@@ -601,7 +602,7 @@
     }
 
     .foto {
-      height: 160px;
+      height: 210px;
     }
 
     .topo-conteudo {
