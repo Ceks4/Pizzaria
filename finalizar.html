@@ -259,14 +259,13 @@
         if (!resposta.ok || !dados.sucesso) throw new Error(dados.erro);
 
         localStorage.setItem('enderecoEntrega', JSON.stringify(endereco));
-        localStorage.setItem('ultimoPedidoId', String(dados.pedidoId));
         localStorage.removeItem(chaveCarrinho);
         mensagem.textContent = `Pedido #${dados.pedidoId} confirmado! Obrigado pela preferência.`;
         mensagem.className = 'mensagem sucesso';
         btnFinalizar.textContent = 'PEDIDO CONFIRMADO';
         const linkStatus = document.createElement('a');
         linkStatus.className = 'link-status';
-        linkStatus.href = `status.html?id=${dados.pedidoId}`;
+        linkStatus.href = 'status.html';
         linkStatus.textContent = 'Acompanhar status do pedido';
         mensagem.insertAdjacentElement('afterend', linkStatus);
       } catch (erro) {

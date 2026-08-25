@@ -127,6 +127,29 @@ app.post('/api/pedidos', async (req, res) => {
   }
 });
 
+// Consulta o último pedido do cliente pelo e-mail da conta
+app.get('/api/pedidos/cliente', async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!email) {
+    return res.status(400).json({ sucesso: false, erro: 'E-mail do cliente não informado.' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `SELECT id, cliente_nome, itens, endereco, total, status, criado_em
+       FROM pedidos WHERE LOWER(cliente_email) = $1 ORDER BY criado_em DESC LIMIT 1`,
+      [email]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ sucesso: false, erro: 'Nenhum pedido encontrado para esta conta.' });
+    }
+    res.json({ sucesso: true, pedido: resultado.rows[0] });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ sucesso: false, erro: 'Não foi possível consultar o pedido.' });
+  }
+});
+
 // Consulta pública do status pelo número do pedido
 app.get('/api/pedidos/:id', async (req, res) => {
   const pedidoId = Number(req.params.id);

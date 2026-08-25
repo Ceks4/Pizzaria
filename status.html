@@ -26,7 +26,7 @@
   <main>
     <div class="card">
       <h2>STATUS DO PEDIDO</h2>
-      <p class="subtitulo">Seu pedido salvo neste dispositivo</p>
+      <p class="subtitulo">Seu pedido salvo na sua conta</p>
       <p class="mensagem" id="mensagem" role="alert"></p>
       <section class="pedido-status" id="resultado" hidden>
         <h3 id="tituloPedido"></h3>
@@ -46,8 +46,12 @@
     const etapas = ['em_preparacao', 'saiu_para_entrega', 'concluido'];
     const resultado = document.getElementById('resultado');
     const mensagem = document.getElementById('mensagem');
-    const idSalvo = localStorage.getItem('ultimoPedidoId');
-    const possuiPedidoSalvo = Number.isInteger(Number(idSalvo)) && Number(idSalvo) > 0;
+    let emailCliente = null;
+    try {
+      emailCliente = JSON.parse(localStorage.getItem('usuarioLogado') || 'null')?.email || null;
+    } catch (erro) {
+      emailCliente = null;
+    }
 
     async function lerResposta(resposta) {
       const tipo = resposta.headers.get('content-type') || '';
@@ -66,10 +70,13 @@
     }
 
     async function consultarPedido() {
-      const id = Number(idSalvo);
-      if (!Number.isInteger(id) || id < 1) return;
+      if (!emailCliente) {
+        mensagem.textContent = 'Entre na sua conta para acompanhar o pedido.';
+        mensagem.className = 'mensagem erro';
+        return;
+      }
       try {
-        const resposta = await fetch(`${API}/api/pedidos/${id}`);
+        const resposta = await fetch(`${API}/api/pedidos/cliente?email=${encodeURIComponent(emailCliente)}`);
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(dados.erro);
         mensagem.textContent = '';
@@ -81,11 +88,11 @@
       }
     }
 
-    if (possuiPedidoSalvo) {
+    if (emailCliente) {
       consultarPedido();
     } else {
-      mensagem.textContent = 'Você ainda não tem um pedido salvo neste dispositivo.';
-      mensagem.className = 'mensagem';
+      mensagem.textContent = 'Entre na sua conta para acompanhar o pedido.';
+      mensagem.className = 'mensagem erro';
     }
     setInterval(() => { if (!resultado.hidden) consultarPedido(); }, 30000);
   </script>
