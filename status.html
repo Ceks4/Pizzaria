@@ -7,11 +7,6 @@
   <link rel="stylesheet" href="auth.css">
   <style>
     .card { max-width: 560px; }
-    .busca-pedido { display: flex; gap: 10px; align-items: flex-end; }
-    .busca-pedido > div { flex: 1; }
-    .btn-consultar { background: #a0522d; color: #fff; border: 0; border-radius: 8px; padding: 12px 16px; font-weight: 700; cursor: pointer; }
-    .btn-consultar:hover { background: #7a3a20; }
-    .btn-consultar:disabled { background: #c9b8ac; cursor: not-allowed; }
     .pedido-status { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e0d8cc; }
     .pedido-status[hidden] { display: none; }
     .pedido-status h3 { color: #5c1f1f; margin-bottom: 8px; }
@@ -20,8 +15,7 @@
     .etapa { padding: 12px 6px; border-top: 4px solid #e0d8cc; color: #7a6a60; text-align: center; font-size: .78rem; }
     .etapa.ativa { border-color: #a0522d; color: #5c1f1f; font-weight: 700; }
     .resumo-cliente { margin-top: 22px; color: #3a2a24; font-size: .9rem; line-height: 1.6; }
-    .trocar-pedido { display: inline-block; margin-top: 18px; border: 0; background: transparent; color: #a0522d; cursor: pointer; font-weight: 600; }
-    @media (max-width: 480px) { .busca-pedido { align-items: stretch; flex-direction: column; } .linha-status { grid-template-columns: 1fr; } .etapa { text-align: left; } }
+    @media (max-width: 480px) { .linha-status { grid-template-columns: 1fr; } .etapa { text-align: left; } }
   </style>
 </head>
 <body>
@@ -32,15 +26,8 @@
   <main>
     <div class="card">
       <h2>STATUS DO PEDIDO</h2>
-      <p class="subtitulo" id="subtituloStatus">Informe o número recebido na confirmação</p>
-      <form id="formConsulta">
-        <div class="busca-pedido">
-          <div><label for="numeroPedido">Número do pedido</label><input type="number" id="numeroPedido" min="1" required></div>
-          <button type="submit" class="btn-consultar" id="btnConsultar">CONSULTAR</button>
-        </div>
-        <p class="mensagem" id="mensagem" role="alert"></p>
-      </form>
-      <button type="button" class="trocar-pedido" id="trocarPedido" hidden>Consultar outro pedido</button>
+      <p class="subtitulo">Seu pedido salvo neste dispositivo</p>
+      <p class="mensagem" id="mensagem" role="alert"></p>
       <section class="pedido-status" id="resultado" hidden>
         <h3 id="tituloPedido"></h3>
         <p>Status atual: <span class="status-atual" id="statusAtual"></span></p>
@@ -57,19 +44,10 @@
     const API = 'https://pizzaria-asml.onrender.com';
     const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Concluído' };
     const etapas = ['em_preparacao', 'saiu_para_entrega', 'concluido'];
-    const form = document.getElementById('formConsulta');
     const resultado = document.getElementById('resultado');
     const mensagem = document.getElementById('mensagem');
-    const numeroPedido = document.getElementById('numeroPedido');
-    const idNaUrl = new URLSearchParams(window.location.search).get('id');
-    const idSalvo = idNaUrl || localStorage.getItem('ultimoPedidoId');
+    const idSalvo = localStorage.getItem('ultimoPedidoId');
     const possuiPedidoSalvo = Number.isInteger(Number(idSalvo)) && Number(idSalvo) > 0;
-    if (possuiPedidoSalvo) {
-      numeroPedido.value = idSalvo;
-      form.hidden = true;
-      document.getElementById('subtituloStatus').textContent = 'Acompanhe aqui o seu último pedido';
-      document.getElementById('trocarPedido').hidden = false;
-    }
 
     async function lerResposta(resposta) {
       const tipo = resposta.headers.get('content-type') || '';
@@ -88,7 +66,7 @@
     }
 
     async function consultarPedido() {
-      const id = Number(numeroPedido.value);
+      const id = Number(idSalvo);
       if (!Number.isInteger(id) || id < 1) return;
       try {
         const resposta = await fetch(`${API}/api/pedidos/${id}`);
@@ -103,14 +81,12 @@
       }
     }
 
-    form.addEventListener('submit', async evento => { evento.preventDefault(); document.getElementById('btnConsultar').disabled = true; await consultarPedido(); document.getElementById('btnConsultar').disabled = false; });
-    document.getElementById('trocarPedido').addEventListener('click', () => {
-      form.hidden = false;
-      document.getElementById('trocarPedido').hidden = true;
-      document.getElementById('subtituloStatus').textContent = 'Informe o número recebido na confirmação';
-      numeroPedido.focus();
-    });
-    if (possuiPedidoSalvo) consultarPedido();
+    if (possuiPedidoSalvo) {
+      consultarPedido();
+    } else {
+      mensagem.textContent = 'Você ainda não tem um pedido salvo neste dispositivo.';
+      mensagem.className = 'mensagem';
+    }
     setInterval(() => { if (!resultado.hidden) consultarPedido(); }, 30000);
   </script>
 </body>
