@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+require('dotenv').config();
 const pool = require('./db');
  
 const app = express();
@@ -10,6 +11,7 @@ app.use(cors());
 
 const ADMIN_USUARIO = process.env.ADMIN_USUARIO || 'Senzalitos';
 const ADMIN_SENHA = process.env.ADMIN_SENHA || 'Africanos';
+const ABACATEPAY_API_URL = 'https://api.abacatepay.com/v2/billing/create';
 const sessoesAdmin = new Set();
 
 async function prepararTabelaPedidos() {
@@ -105,6 +107,61 @@ app.post('/api/admin/login', (req, res) => {
   const token = crypto.randomBytes(32).toString('hex');
   sessoesAdmin.add(token);
   res.json({ sucesso: true, token });
+});
+
+// Cria o checkout no servidor para manter a chave da Abacate Pay protegida.
+app.post('/api/pagamentos', async (req, res) => {
+  const { nome, email, telefone, itens, total } = req.body;
+  const valorTotal = Number(total);
+
+  if (!nome || !email || !Array.isArray(itens) || itens.length === 0 || !Number.isFinite(valorTotal) || valorTotal <= 0) {
+    return res.status(400).json({ sucesso: false, erro: 'Dados do pagamento incompletos.' });
+  }
+
+  if (!process.env.ABACATEPAY_API_KEY) {
+    return res.status(503).json({ sucesso: false, erro: 'Pagamento temporariamente indisponível.' });
+  }
+
+  const produtos = itens.map((item, indice) => ({
+    externalId: String(item.id || `pizza-${indice + 1}`),
+    name: String(item.nome || 'Item do pedido'),
+    description: 'Pedido LosPizzanitos',
+    quantity: Math.max(1, Number(item.quantidade) || 1),
+    price: Math.round((Number(item.preco) || 0) * 100)
+  }));
+
+  try {
+    const resposta = await fetch(ABACATEPAY_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.ABACATEPAY_API_KEY}`
+      },
+      body: JSON.stringify({
+        frequency: 'ONE_TIME',
+        methods: ['PIX'],
+        products: produtos,
+        returnUrl: process.env.ABACATEPAY_RETURN_URL || 'https://pizzaria-asml.github.io/Pizzaria/finalizar.html',
+        completionUrl: process.env.ABACATEPAY_COMPLETION_URL || 'https://pizzaria-asml.github.io/Pizzaria/finalizar.html?pagamento=sucesso',
+        customer: {
+          name: String(nome),
+          email: String(email),
+          cellphone: telefone ? String(telefone) : undefined
+        }
+      })
+    });
+    const dados = await resposta.json();
+
+    if (!resposta.ok || !dados?.data?.checkoutUrl) {
+      console.error('Falha ao criar cobrança Abacate Pay:', dados);
+      return res.status(502).json({ sucesso: false, erro: 'Não foi possível iniciar o pagamento.' });
+    }
+
+    res.json({ sucesso: true, checkoutUrl: dados.data.checkoutUrl });
+  } catch (erro) {
+    console.error('Erro ao conectar com a Abacate Pay:', erro);
+    res.status(502).json({ sucesso: false, erro: 'Não foi possível conectar ao pagamento.' });
+  }
 });
 
 // Registra o pedido confirmado para consulta no painel

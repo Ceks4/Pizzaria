@@ -57,6 +57,16 @@
     .btn-cep:hover { background: #7a3a20; }
     .btn-cep:disabled { background: #c9b8ac; cursor: not-allowed; }
     .link-status { display: inline-block; margin-top: 12px; color: #a0522d; font-size: .85rem; font-weight: 600; }
+    .pagamento-info {
+      background: #fff7ed;
+      border: 1px solid #f0c9a8;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      color: #5c1f1f;
+      font-size: .85rem;
+      line-height: 1.45;
+    }
     @media (max-width: 480px) {
       .campo-cep { align-items: stretch; flex-direction: column; gap: 8px; }
     }
@@ -89,6 +99,10 @@
           <span id="totalPedido">R$ 0,00</span>
         </div>
       </section>
+
+      <div class="pagamento-info">
+        O pagamento será feito com segurança pelo checkout PIX da Abacate Pay.
+      </div>
 
       <form id="formEndereco">
         <div class="campo-cep">
@@ -131,7 +145,7 @@
           </div>
         </div>
 
-        <button type="submit" class="btn-principal" id="btnFinalizar">CONFIRMAR PEDIDO</button>
+        <button type="submit" class="btn-principal" id="btnFinalizar">IR PARA PAGAMENTO PIX</button>
         <p class="mensagem" id="mensagem" role="status" aria-live="polite"></p>
       </form>
     </div>
@@ -226,6 +240,43 @@
     const form = document.getElementById('formEndereco');
     const mensagem = document.getElementById('mensagem');
     const btnFinalizar = document.getElementById('btnFinalizar');
+    const apiBase = 'https://pizzaria-asml.onrender.com';
+    const chavePedidoPendente = 'pedidoPendentePagamento';
+
+    async function registrarPedidoPendente() {
+      const pedido = JSON.parse(localStorage.getItem(chavePedidoPendente) || 'null');
+      if (!pedido) return;
+
+      const resposta = await fetch(`${apiBase}/api/pedidos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pedido)
+      });
+      const dados = await lerResposta(resposta);
+      if (!resposta.ok || !dados.sucesso) throw new Error(dados.erro);
+
+      localStorage.setItem('enderecoEntrega', JSON.stringify(pedido.endereco));
+      localStorage.removeItem(chavePedidoPendente);
+      localStorage.removeItem(chaveCarrinho);
+      mensagem.textContent = `Pagamento concluído e pedido #${dados.pedidoId} confirmado!`;
+      mensagem.className = 'mensagem sucesso';
+      btnFinalizar.textContent = 'PEDIDO CONFIRMADO';
+      const linkStatus = document.createElement('a');
+      linkStatus.className = 'link-status';
+      linkStatus.href = 'status.html';
+      linkStatus.textContent = 'Acompanhar status do pedido';
+      mensagem.insertAdjacentElement('afterend', linkStatus);
+    }
+
+    if (new URLSearchParams(window.location.search).get('pagamento') === 'sucesso') {
+      btnFinalizar.disabled = true;
+      mensagem.textContent = 'Registrando seu pedido...';
+      registrarPedidoPendente().catch(() => {
+        mensagem.textContent = 'O pagamento foi concluído, mas não conseguimos registrar o pedido. Tente novamente.';
+        mensagem.className = 'mensagem erro';
+        btnFinalizar.disabled = false;
+      });
+    }
 
     form.addEventListener('submit', async evento => {
       evento.preventDefault();
@@ -241,38 +292,40 @@
       const endereco = Object.fromEntries(new FormData(form).entries());
       const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
       btnFinalizar.disabled = true;
-      btnFinalizar.textContent = 'REGISTRANDO...';
+      btnFinalizar.textContent = 'ABRINDO PAGAMENTO...';
 
       try {
-        const resposta = await fetch('https://pizzaria-asml.onrender.com/api/pedidos', {
+        if (!usuario?.email) {
+          throw new Error('Faça login antes de finalizar o pedido.');
+        }
+
+        const resposta = await fetch(`${apiBase}/api/pagamentos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             nome: usuario?.nome || 'Cliente não identificado',
-            email: usuario?.email || null,
+            email: usuario.email,
+            telefone: usuario.telefone || null,
             itens: carrinho,
-            endereco,
             total
           })
         });
-        const dados = await resposta.json();
+        const dados = await lerResposta(resposta);
         if (!resposta.ok || !dados.sucesso) throw new Error(dados.erro);
 
-        localStorage.setItem('enderecoEntrega', JSON.stringify(endereco));
-        localStorage.removeItem(chaveCarrinho);
-        mensagem.textContent = `Pedido #${dados.pedidoId} confirmado! Obrigado pela preferência.`;
-        mensagem.className = 'mensagem sucesso';
-        btnFinalizar.textContent = 'PEDIDO CONFIRMADO';
-        const linkStatus = document.createElement('a');
-        linkStatus.className = 'link-status';
-        linkStatus.href = 'status.html';
-        linkStatus.textContent = 'Acompanhar status do pedido';
-        mensagem.insertAdjacentElement('afterend', linkStatus);
+        localStorage.setItem(chavePedidoPendente, JSON.stringify({
+          nome: usuario.nome || 'Cliente não identificado',
+          email: usuario.email,
+          itens: carrinho,
+          endereco,
+          total
+        }));
+        window.location.href = dados.checkoutUrl;
       } catch (erro) {
-        mensagem.textContent = 'Não foi possível registrar o pedido. Tente novamente.';
+        mensagem.textContent = erro.message || 'Não foi possível iniciar o pagamento. Tente novamente.';
         mensagem.className = 'mensagem erro';
         btnFinalizar.disabled = false;
-        btnFinalizar.textContent = 'CONFIRMAR PEDIDO';
+        btnFinalizar.textContent = 'IR PARA PAGAMENTO PIX';
       }
     });
   </script>
