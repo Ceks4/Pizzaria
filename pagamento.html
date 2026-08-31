@@ -91,12 +91,24 @@
   </main>
 
   <script>
-    const URL_BACKEND = 'https://pizzaria-asml.onrender.com';
+    const URL_BACKEND = window.location.hostname === 'localhost'
+      ? 'http://localhost:3000'
+      : 'https://pizzaria-asml.onrender.com';
     const chaveCarrinho = 'carrinhoPizzaria';
 
     const carrinho = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
     const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
     const enderecoEntrega = JSON.parse(localStorage.getItem('enderecoEntrega') || '{}');
+
+    async function lerResposta(resposta) {
+      const texto = await resposta.text();
+      if (!texto) return {};
+      try {
+        return JSON.parse(texto);
+      } catch (erro) {
+        throw new Error('Resposta inválida do servidor. Verifique a URL do backend no Render.');
+      }
+    }
 
     let total = 0;
     carrinho.forEach(item => total += Number(item.preco) * Number(item.quantidade || 1));
@@ -135,7 +147,7 @@
           })
         });
 
-        const dados = await resposta.json();
+        const dados = await lerResposta(resposta);
 
         if (!resposta.ok || dados.erro) {
           throw new Error(dados.erro || 'Não foi possível gerar o Pix.');
@@ -162,7 +174,7 @@
 
       try {
         const resposta = await fetch(`${URL_BACKEND}/api/pagamento-status/${pagamentoId}`);
-        const dados = await resposta.json();
+        const dados = await lerResposta(resposta);
 
         if (dados.status === 'approved') {
           clearInterval(intervaloChecagem);
