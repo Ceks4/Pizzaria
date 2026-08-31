@@ -1,218 +1,222 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pagamento — LosPizzanitos</title>
-  <link rel="stylesheet" href="auth.css">
-  <style>
-    .card { max-width: 460px; text-align: center; }
-    .valor-total {
-      font-size: 2rem;
-      font-weight: 700;
-      color: #5c1f1f;
-      margin-bottom: 24px;
-    }
-    #areaQrCode { display: none; }
-    #qrcodeImg {
-      width: 220px;
-      height: 220px;
-      margin: 0 auto 18px;
-      border: 1px solid #e0d8cc;
-      border-radius: 10px;
-      display: block;
-      background: #fff;
-      object-fit: contain;
-    }
-    .copia-cola {
-      background: #faf8f4;
-      border: 1px solid #e0d8cc;
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 0.75rem;
-      word-break: break-all;
-      color: #3a2a24;
-      margin-bottom: 14px;
-      text-align: left;
-    }
-    .btn-copiar {
-      background: #a0522d;
-      color: #fff;
-      border: none;
-      border-radius: 999px;
-      padding: 10px 20px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      cursor: pointer;
-      margin-bottom: 18px;
-    }
-    .btn-copiar:hover { background: #7a3a20; }
-    .status-pix {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #7a6a60;
-    }
-    .status-pix.pago { color: #2a7a3d; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagamento — LosPizzanitos</title>
+<link rel="stylesheet" href="auth.css">
+<style>
+  .card { max-width: 460px; text-align: center; }
+  .valor-total {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #5c1f1f;
+    margin-bottom: 24px;
+  }
+  #areaQrCode { display: none; }
+  #qrcodeImg {
+    width: 220px;
+    height: 220px;
+    margin: 0 auto 18px;
+    border: 1px solid #e0d8cc;
+    border-radius: 10px;
+    display: block;
+  }
+  .copia-cola {
+    background: #faf8f4;
+    border: 1px solid #e0d8cc;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 0.75rem;
+    word-break: break-all;
+    color: #3a2a24;
+    margin-bottom: 14px;
+    text-align: left;
+  }
+  .btn-copiar {
+    background: #a0522d;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 18px;
+  }
+  .btn-copiar:hover { background: #7a3a20; }
+  .status-pix {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #7a6a60;
+  }
+  .status-pix.pago { color: #2a7a3d; }
+</style>
 </head>
 <body>
-  <header class="topo">
-    <div class="marca">
-      <span class="bolinha"></span>
-      <div>
-        <h1>LOSPIZZANITOS</h1>
-        <p>Pizzaria sabor caseiro · forno a lenha</p>
-      </div>
+ 
+<header class="topo">
+  <div class="marca">
+    <span class="bolinha"></span>
+    <div>
+      <h1>LOSPIZZANITOS</h1>
+      <p>Pizzaria sabor caseiro · forno a lenha</p>
     </div>
-    <nav>
-      <a href="cardapio.html">CARDÁPIO</a>
-    </nav>
-  </header>
-
-  <main>
-    <div class="card">
-      <h2>PAGAMENTO</h2>
-      <p class="subtitulo">Pague com Pix para confirmar seu pedido</p>
-
-      <div class="valor-total" id="valorTotal">R$ 0,00</div>
-
-      <div id="areaInicial">
-        <button class="btn-principal" id="btnGerarPix">GERAR QR CODE PIX</button>
-        <p class="mensagem" id="mensagem"></p>
-      </div>
-
-      <div id="areaQrCode">
-        <img id="qrcodeImg" alt="QR Code Pix">
-        <div class="copia-cola" id="copiaCola"></div>
-        <button class="btn-copiar" id="btnCopiar">COPIAR CÓDIGO PIX</button>
-        <p class="status-pix" id="statusPix">Aguardando pagamento...</p>
-      </div>
+  </div>
+  <nav>
+    <a href="cardapio.html">CARDÁPIO</a>
+  </nav>
+</header>
+ 
+<main>
+  <div class="card">
+    <h2>PAGAMENTO</h2>
+    <p class="subtitulo">Pague com Pix para confirmar seu pedido</p>
+ 
+    <div class="valor-total" id="valorTotal">R$ 0,00</div>
+ 
+    <div id="areaInicial">
+      <button class="btn-principal" id="btnGerarPix">GERAR QR CODE PIX</button>
+      <p class="mensagem" id="mensagem"></p>
     </div>
-  </main>
-
-  <script>
-    const URL_BACKEND = window.location.hostname === 'localhost'
-      ? 'http://localhost:3000'
-      : 'https://pizzaria-asml.onrender.com';
-    const chaveCarrinho = 'carrinhoPizzaria';
-
-    const carrinho = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
-    const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-    const enderecoEntrega = JSON.parse(localStorage.getItem('enderecoEntrega') || '{}');
-
-    async function lerResposta(resposta) {
-      const texto = await resposta.text();
-      if (!texto) return {};
-      try {
-        return JSON.parse(texto);
-      } catch (erro) {
-        throw new Error('Resposta inválida do servidor. Verifique a URL do backend no Render.');
-      }
+ 
+    <div id="areaQrCode">
+      <img id="qrcodeImg" alt="QR Code Pix">
+      <div class="copia-cola" id="copiaCola"></div>
+      <button class="btn-copiar" id="btnCopiar">COPIAR CÓDIGO PIX</button>
+      <p class="status-pix" id="statusPix">Aguardando pagamento...</p>
+    </div>
+  </div>
+</main>
+ 
+<script>
+  const URL_BACKEND = 'https://pizzaria-asml.onrender.com';
+ 
+  // ---- Carrega carrinho e endereço salvos ----
+  const carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+  const endereco = JSON.parse(localStorage.getItem('enderecoEntrega')) || {};
+  const usuario = JSON.parse(localStorage.getItem('usuarioLogado')) || {};
+ 
+  let total = 0;
+  carrinho.forEach(item => total += item.preco * item.quantidade);
+  document.getElementById('valorTotal').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+ 
+  const btnGerarPix = document.getElementById('btnGerarPix');
+  const mensagem = document.getElementById('mensagem');
+  const areaInicial = document.getElementById('areaInicial');
+  const areaQrCode = document.getElementById('areaQrCode');
+  const statusPix = document.getElementById('statusPix');
+ 
+  let pagamentoId = null;
+  let intervaloChecagem = null;
+ 
+  btnGerarPix.addEventListener('click', async () => {
+    if (carrinho.length === 0) {
+      mensagem.textContent = 'Seu carrinho está vazio.';
+      mensagem.className = 'mensagem erro';
+      return;
     }
-
-    let total = 0;
-    carrinho.forEach(item => total += Number(item.preco) * Number(item.quantidade || 1));
-    document.getElementById('valorTotal').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
-
-    const btnGerarPix = document.getElementById('btnGerarPix');
-    const mensagem = document.getElementById('mensagem');
-    const areaInicial = document.getElementById('areaInicial');
-    const areaQrCode = document.getElementById('areaQrCode');
-    const statusPix = document.getElementById('statusPix');
-
-    let pagamentoId = null;
-    let intervaloChecagem = null;
-
-    async function gerarPix() {
-      if (carrinho.length === 0) {
-        mensagem.textContent = 'Seu carrinho está vazio.';
-        mensagem.className = 'mensagem erro';
-        return;
-      }
-
-      btnGerarPix.disabled = true;
-      btnGerarPix.textContent = 'GERANDO...';
-
-      try {
-        const resposta = await fetch(`${URL_BACKEND}/api/pagamento-pix`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            valor: total,
-            descricao: 'Pedido LosPizzanitos',
-            email: usuario.email || '',
-            nome: usuario.nome || 'Cliente',
-            telefone: usuario.telefone || '',
-            cpf: ''
-          })
-        });
-
-        const dados = await lerResposta(resposta);
-
-        if (!resposta.ok || dados.erro) {
-          throw new Error(dados.erro || 'Não foi possível gerar o Pix.');
-        }
-
-        pagamentoId = dados.id;
-        document.getElementById('qrcodeImg').src = dados.qrCodeBase64;
-        document.getElementById('copiaCola').textContent = dados.codigoCopiaCola;
-
-        areaInicial.style.display = 'none';
-        areaQrCode.style.display = 'block';
-
-        intervaloChecagem = setInterval(checarStatus, 5000);
-      } catch (erro) {
-        mensagem.textContent = erro.message || 'Não foi possível conectar ao servidor.';
+ 
+    btnGerarPix.disabled = true;
+    btnGerarPix.textContent = 'GERANDO...';
+ 
+    try {
+      const resposta = await fetch(`${URL_BACKEND}/api/pagamento-pix`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          valor: total,
+          descricao: 'Pedido LosPizzanitos',
+          nome: usuario.nome || 'Cliente',
+          email: usuario.email || '',
+          telefone: '',
+          cpf: ''
+        })
+      });
+ 
+      const dados = await resposta.json();
+ 
+      if (dados.erro) {
+        mensagem.textContent = dados.erro;
         mensagem.className = 'mensagem erro';
         btnGerarPix.disabled = false;
         btnGerarPix.textContent = 'GERAR QR CODE PIX';
+        return;
       }
+ 
+      pagamentoId = dados.id;
+      document.getElementById('qrcodeImg').src = dados.qrCodeBase64;
+      document.getElementById('copiaCola').textContent = dados.codigoCopiaCola;
+ 
+      areaInicial.style.display = 'none';
+      areaQrCode.style.display = 'block';
+ 
+      // Checa o status a cada 5 segundos
+      intervaloChecagem = setInterval(checarStatus, 5000);
+ 
+    } catch (erro) {
+      mensagem.textContent = 'Não foi possível conectar ao servidor.';
+      mensagem.className = 'mensagem erro';
+      btnGerarPix.disabled = false;
+      btnGerarPix.textContent = 'GERAR QR CODE PIX';
     }
-
-    async function checarStatus() {
-      if (!pagamentoId) return;
-
-      try {
-        const resposta = await fetch(`${URL_BACKEND}/api/pagamento-status/${pagamentoId}`);
-        const dados = await lerResposta(resposta);
-
-        if (dados.status === 'approved') {
-          clearInterval(intervaloChecagem);
-          statusPix.textContent = 'Pagamento confirmado! 🎉';
-          statusPix.className = 'status-pix pago';
-
-          localStorage.removeItem(chaveCarrinho);
-          localStorage.setItem('enderecoEntrega', JSON.stringify(enderecoEntrega));
-          localStorage.removeItem('pedidoPendentePagamento');
-
-          setTimeout(() => {
-            window.location.href = 'status.html';
-          }, 2500);
-        } else if (dados.status === 'rejected') {
-          clearInterval(intervaloChecagem);
-          statusPix.textContent = 'O pagamento foi recusado. Gere um novo Pix.';
-        }
-      } catch (erro) {
-        // repete no próximo ciclo
-      }
-    }
-
-    document.getElementById('btnCopiar').addEventListener('click', async () => {
-      const texto = document.getElementById('copiaCola').textContent;
-      const botao = document.getElementById('btnCopiar');
-      try {
-        await navigator.clipboard.writeText(texto);
-        const original = botao.textContent;
-        botao.textContent = 'COPIADO!';
+  });
+ 
+  async function checarStatus() {
+    if (!pagamentoId) return;
+ 
+    try {
+      const resposta = await fetch(`${URL_BACKEND}/api/pagamento-status/${pagamentoId}`);
+      const dados = await resposta.json();
+ 
+      if (dados.status === 'approved') {
+        clearInterval(intervaloChecagem);
+        statusPix.textContent = 'Pagamento confirmado! 🎉';
+        statusPix.className = 'status-pix pago';
+ 
+        await salvarPedido();
+ 
+        localStorage.removeItem('carrinho');
+ 
         setTimeout(() => {
-          botao.textContent = original;
-        }, 1500);
-      } catch (erro) {
-        alert('Não foi possível copiar automaticamente. Copie o conteúdo manualmente.');
+          window.location.href = 'status.html';
+        }, 2500);
+      } else if (dados.status === 'rejected') {
+        clearInterval(intervaloChecagem);
+        statusPix.textContent = 'O pagamento foi recusado. Gere um novo Pix.';
       }
-    });
-
-    btnGerarPix.addEventListener('click', gerarPix);
-  </script>
+    } catch (erro) {
+      // silencioso — tenta de novo no próximo intervalo
+    }
+  }
+ 
+  async function salvarPedido() {
+    try {
+      await fetch(`${URL_BACKEND}/api/pedidos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: usuario.email || '',
+          itens: carrinho,
+          total: total,
+          endereco: endereco,
+          pagamentoId: pagamentoId
+        })
+      });
+    } catch (erro) {
+      // se falhar em salvar, o cliente ainda pagou — não trava a tela por isso
+    }
+  }
+ 
+  document.getElementById('btnCopiar').addEventListener('click', () => {
+    const texto = document.getElementById('copiaCola').textContent;
+    navigator.clipboard.writeText(texto);
+    const btn = document.getElementById('btnCopiar');
+    const original = btn.textContent;
+    btn.textContent = 'COPIADO!';
+    setTimeout(() => btn.textContent = original, 1500);
+  });
+</script>
+ 
 </body>
 </html>

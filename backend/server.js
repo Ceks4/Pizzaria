@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-require('dotenv').config();
 const pool = require('./db');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
  
@@ -9,8 +8,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
  
-const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
-const client = MP_ACCESS_TOKEN ? new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN }) : null;
+const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
  
 // Rota de cadastro
 app.post('/api/cadastro', async (req, res) => {
@@ -66,33 +64,22 @@ app.post('/api/login', async (req, res) => {
 // Rota para gerar o Pix (Mercado Pago)
 app.post('/api/pagamento-pix', async (req, res) => {
   const { valor, descricao, email } = req.body;
-
-  if (!client) {
-    return res.status(503).json({ erro: 'Pagamento temporariamente indisponível.' });
-  }
-
+ 
   try {
     const payment = new Payment(client);
     const resultado = await payment.create({
       body: {
-        transaction_amount: Number(valor),
-        description: descricao || 'Pedido LosPizzanitos',
+        transaction_amount: valor,
+        description: descricao,
         payment_method_id: 'pix',
-        payer: { email: email || '' }
+        payer: { email: email }
       }
     });
-
-    const qrCodeBase64 = resultado?.point_of_interaction?.transaction_data?.qr_code_base64;
-    const qrCode = resultado?.point_of_interaction?.transaction_data?.qr_code;
-
-    if (!qrCodeBase64 || !qrCode) {
-      return res.status(502).json({ erro: 'Não foi possível gerar o QR Code do Pix.' });
-    }
-
+ 
     res.json({
       id: resultado.id,
-      qrCodeBase64: 'data:image/png;base64,' + qrCodeBase64,
-      codigoCopiaCola: qrCode
+      qrCodeBase64: 'data:image/png;base64,' + resultado.point_of_interaction.transaction_data.qr_code_base64,
+      codigoCopiaCola: resultado.point_of_interaction.transaction_data.qr_code
     });
   } catch (erro) {
     console.error(erro);
@@ -102,17 +89,83 @@ app.post('/api/pagamento-pix', async (req, res) => {
  
 // Rota para checar status do pagamento
 app.get('/api/pagamento-status/:id', async (req, res) => {
-  if (!client) {
-    return res.status(503).json({ erro: 'Pagamento temporariamente indisponível.' });
-  }
-
   try {
     const payment = new Payment(client);
     const resultado = await payment.get({ id: req.params.id });
-    res.json({ status: resultado.status }); // approved, pending, rejected
+    res.json({ status: resultado.status });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: 'Erro ao checar status' });
+  }
+});
+ 
+// Criar pedido (chamado depois que o Pix é aprovado)
+app.post('/api/pedidos', async (req, res) => {
+  const { email, itens, total, endereco, pagamentoId } = req.body;
+ 
+  try {
+    const usuario = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email]);
+    if (usuario.rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado.' });
+ 
+    const usuarioId = usuario.rows[0].id;
+ 
+    await pool.query(
+      `INSERT INTO pedidos (usuario_id, itens, total, endereco, pagamento_id)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [usuarioId, JSON.stringify(itens), total, JSON.stringify(endereco), pagamentoId]
+    );
+ 
+    res.json({ sucesso: true });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Não foi possível salvar o pedido.' });
+  }
+});
+ 
+// Listar pedidos do cliente logado
+app.get('/api/pedidos/cliente', async (req, res) => {
+  const { email } = req.query;
+ 
+  try {
+    const resultado = await pool.query(
+      `SELECT p.id, p.itens, p.total, p.endereco, p.status, p.criado_em
+       FROM pedidos p
+       JOIN usuarios u ON p.usuario_id = u.id
+       WHERE u.email = $1
+       ORDER BY p.criado_em DESC`,
+      [email]
+    );
+ 
+    res.json({ pedidos: resultado.rows });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Não foi possível consultar os pedidos.' });
+  }
+});
+ 
+// Cancelar pedido (só se ainda estiver em preparação)
+app.patch('/api/pedidos/cliente/:id/cancelar', async (req, res) => {
+  const { id } = req.params;
+  const { email } = req.body;
+ 
+  try {
+    const resultado = await pool.query(
+      `UPDATE pedidos p
+       SET status = 'cancelado'
+       FROM usuarios u
+       WHERE p.usuario_id = u.id AND p.id = $1 AND u.email = $2 AND p.status = 'em_preparacao'
+       RETURNING p.id`,
+      [id, email]
+    );
+ 
+    if (resultado.rows.length === 0) {
+      return res.status(400).json({ erro: 'Pedido não encontrado ou não pode mais ser cancelado.' });
+    }
+ 
+    res.json({ sucesso: true });
+  } catch (erro) {
+    console.error(erro);
+    res.status(500).json({ erro: 'Não foi possível cancelar o pedido.' });
   }
 });
  
