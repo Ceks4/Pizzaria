@@ -292,26 +292,12 @@
       const endereco = Object.fromEntries(new FormData(form).entries());
       const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
       btnFinalizar.disabled = true;
-      btnFinalizar.textContent = 'ABRINDO PAGAMENTO...';
+      btnFinalizar.textContent = 'REDIRECIONANDO...';
 
       try {
         if (!usuario?.email) {
           throw new Error('Faça login antes de finalizar o pedido.');
         }
-
-        const resposta = await fetch(`${apiBase}/api/pagamentos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            nome: usuario?.nome || 'Cliente não identificado',
-            email: usuario.email,
-            telefone: usuario.telefone || null,
-            itens: carrinho,
-            total
-          })
-        });
-        const dados = await lerResposta(resposta);
-        if (!resposta.ok || !dados.sucesso) throw new Error(dados.erro);
 
         localStorage.setItem(chavePedidoPendente, JSON.stringify({
           nome: usuario.nome || 'Cliente não identificado',
@@ -320,7 +306,9 @@
           endereco,
           total
         }));
-        window.location.href = dados.checkoutUrl;
+
+        localStorage.setItem('enderecoEntrega', JSON.stringify(endereco));
+        window.location.href = 'pagamento.html';
       } catch (erro) {
         mensagem.textContent = erro.message || 'Não foi possível iniciar o pagamento. Tente novamente.';
         mensagem.className = 'mensagem erro';

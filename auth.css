@@ -10,8 +10,8 @@
 }
  
 body {
-  font-family: 'Segoe UI', Tahoma, sans-serif;
-  background: #f4f1ea;
+  font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #f4eadb, #fffaf3 52%, #f0dfca);
   color: #3a2a24;
   min-height: 100vh;
   display: flex;
@@ -20,13 +20,14 @@ body {
  
 /* Header, igual ao cardapio.html */
 header.topo {
-  background: linear-gradient(120deg, #a0522d, #7a3a20);
+  background: linear-gradient(120deg, #70231f, #9f3026);
   color: #fff;
-  padding: 28px 48px;
+  padding: 18px max(24px, calc((100% - 1120px) / 2));
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
+  box-shadow: 0 4px 18px rgba(73, 27, 21, 0.16);
 }
  
 .marca {
@@ -35,11 +36,9 @@ header.topo {
   gap: 14px;
 }
  
-.marca .bolinha {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #f4f1ea;
+.marca .marca-icone {
+  font-size: 1.55rem;
+  line-height: 1;
 }
  
 .marca h1 {
@@ -59,6 +58,7 @@ nav a {
   text-decoration: none;
   margin-left: 28px;
   font-size: 0.85rem;
+  font-family: Arial, sans-serif;
   letter-spacing: 1px;
   font-weight: 600;
 }
@@ -74,14 +74,15 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48px 20px;
+  padding: 64px 20px;
 }
  
 .card {
   background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(90, 40, 20, 0.12);
-  padding: 44px 40px;
+  border: 1px solid #eadbca;
+  border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(90, 40, 20, 0.12);
+  padding: 44px;
   width: 100%;
   max-width: 420px;
 }
@@ -117,12 +118,13 @@ label {
 }
  
 input {
+  font-family: inherit;
   width: 100%;
   padding: 12px 14px;
   border: 1px solid #e0d8cc;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 0.95rem;
-  background: #faf8f4;
+  background: #fffaf3;
   color: #3a2a24;
 }
  
@@ -146,18 +148,19 @@ button.btn-principal {
   background: #5c1f1f;
   color: #fff;
   border: none;
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 13px;
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 1px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
  
 button.btn-principal:hover,
 button.btn-principal:focus-visible {
   background: #a0522d;
+  transform: translateY(-2px);
 }
  
 button.btn-principal:disabled {

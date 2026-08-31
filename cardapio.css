@@ -1,9 +1,9 @@
 :root {
-    --vermelho: #9e2b23;
-    --vermelho-claro: #c1443a;
+    --vermelho: #9f3026;
+    --vermelho-claro: #c24e3d;
     --bege: #f6efe3;
     --bege-escuro: #ece0cc;
-    --texto: #3a3230;
+    --texto: #342522;
     --texto-suave: #7a6d66;
     --borda: #e0d3bd;
   }
@@ -15,15 +15,15 @@
   }
   
   body {
-    font-family: "Helvetica Neue", Arial, sans-serif;
-    background-color: var(--bege);
+    font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #f6efe3 0%, #fffaf3 48%, #f2e5d1 100%);
     color: var(--texto);
     line-height: 1.6;
   }
   
   .container {
     width: 100%;
-    max-width: 1080px;
+    max-width: 1120px;
     margin: 0 auto;
     padding: 0 24px;
   }
@@ -32,7 +32,7 @@
   .topo {
     background-color: var(--vermelho);
     color: var(--bege);
-    padding: 22px 0;
+    padding: 18px 0;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -234,10 +234,10 @@
   .item {
     background-color: #fff;
     border: 1px solid var(--borda);
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 0 20px 20px;
     overflow: hidden;
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .item-conteudo {
@@ -264,6 +264,7 @@
   .item:hover {
     border-color: var(--vermelho-claro);
     transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(112, 35, 31, 0.1);
   }
 
   .botao-comprar {
@@ -289,6 +290,7 @@
     font-size: 16px;
     font-weight: 600;
     letter-spacing: 0.5px;
+    color: var(--texto);
   }
   
   .preco {
@@ -329,7 +331,7 @@
   .ajuda-bloco {
     background-color: #fff;
     border: 1px solid var(--borda);
-    border-radius: 4px;
+    border-radius: 8px;
     padding: 24px;
   }
   
