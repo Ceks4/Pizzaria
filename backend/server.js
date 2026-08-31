@@ -2,7 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
-require('dotenv').config();
+const path = require('path');
+const mercadopago = require('mercadopago');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const pool = require('./db');
  
 const app = express();
@@ -11,8 +13,13 @@ app.use(cors());
 
 const ADMIN_USUARIO = process.env.ADMIN_USUARIO || 'Senzalitos';
 const ADMIN_SENHA = process.env.ADMIN_SENHA || 'Africanos';
-const ABACATEPAY_API_URL = 'https://api.abacatepay.com/v2/billing/create';
+const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://pizzaria-asml.github.io/Pizzaria';
 const sessoesAdmin = new Set();
+
+if (MP_ACCESS_TOKEN) {
+  mercadopago.configure({ access_token: MP_ACCESS_TOKEN });
+}
 
 async function prepararTabelaPedidos() {
   await pool.query(`
@@ -109,7 +116,7 @@ app.post('/api/admin/login', (req, res) => {
   res.json({ sucesso: true, token });
 });
 
-// Cria o checkout no servidor para manter a chave da Abacate Pay protegida.
+// Cria o checkout no servidor para manter o token do Mercado Pago protegido.
 app.post('/api/pagamentos', async (req, res) => {
   const { nome, email, telefone, itens, total } = req.body;
   const valorTotal = Number(total);
@@ -118,48 +125,48 @@ app.post('/api/pagamentos', async (req, res) => {
     return res.status(400).json({ sucesso: false, erro: 'Dados do pagamento incompletos.' });
   }
 
-  if (!process.env.ABACATEPAY_API_KEY) {
+  if (!MP_ACCESS_TOKEN) {
     return res.status(503).json({ sucesso: false, erro: 'Pagamento temporariamente indisponível.' });
   }
 
   const produtos = itens.map((item, indice) => ({
-    externalId: String(item.id || `pizza-${indice + 1}`),
-    name: String(item.nome || 'Item do pedido'),
+    id: String(item.id || `pizza-${indice + 1}`),
+    title: String(item.nome || 'Item do pedido'),
     description: 'Pedido LosPizzanitos',
     quantity: Math.max(1, Number(item.quantidade) || 1),
-    price: Math.round((Number(item.preco) || 0) * 100)
+    unit_price: Number(item.preco) || 0
   }));
 
   try {
-    const resposta = await fetch(ABACATEPAY_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.ABACATEPAY_API_KEY}`
+    const resposta = await mercadopago.preferences.create({
+      items: produtos,
+      payer: {
+        name: String(nome),
+        email: String(email),
+        phone: telefone ? { number: String(telefone).replace(/\D/g, '') } : undefined
       },
-      body: JSON.stringify({
-        frequency: 'ONE_TIME',
-        methods: ['PIX'],
-        products: produtos,
-        returnUrl: process.env.ABACATEPAY_RETURN_URL || 'https://pizzaria-asml.github.io/Pizzaria/finalizar.html',
-        completionUrl: process.env.ABACATEPAY_COMPLETION_URL || 'https://pizzaria-asml.github.io/Pizzaria/finalizar.html?pagamento=sucesso',
-        customer: {
-          name: String(nome),
-          email: String(email),
-          cellphone: telefone ? String(telefone) : undefined
-        }
-      })
+      back_urls: {
+        success: `${FRONTEND_URL}/finalizar.html?pagamento=sucesso`,
+        failure: `${FRONTEND_URL}/finalizar.html?pagamento=erro`,
+        pending: `${FRONTEND_URL}/finalizar.html?pagamento=pendente`
+      },
+      auto_return: 'approved',
+      notification_url: process.env.MP_NOTIFICATION_URL || undefined,
+      metadata: {
+        cliente_nome: String(nome),
+        cliente_email: String(email)
+      }
     });
-    const dados = await resposta.json();
 
-    if (!resposta.ok || !dados?.data?.checkoutUrl) {
-      console.error('Falha ao criar cobrança Abacate Pay:', dados);
+    const checkoutUrl = resposta?.body?.init_point || resposta?.body?.sandbox_init_point;
+    if (!checkoutUrl) {
+      console.error('Falha ao criar cobrança Mercado Pago:', resposta?.body);
       return res.status(502).json({ sucesso: false, erro: 'Não foi possível iniciar o pagamento.' });
     }
 
-    res.json({ sucesso: true, checkoutUrl: dados.data.checkoutUrl });
+    res.json({ sucesso: true, checkoutUrl });
   } catch (erro) {
-    console.error('Erro ao conectar com a Abacate Pay:', erro);
+    console.error('Erro ao conectar com o Mercado Pago:', erro);
     res.status(502).json({ sucesso: false, erro: 'Não foi possível conectar ao pagamento.' });
   }
 });
