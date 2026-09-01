@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const pool = require('./db');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
@@ -9,6 +10,58 @@ app.use(express.json());
 app.use(cors());
  
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+
+const ADMIN_DEFAULT = {
+  usuario: process.env.ADMIN_USER || 'admin',
+  senha: process.env.ADMIN_PASS || 'admin123'
+};
+const adminTokens = new Set();
+
+function parseJsonField(valor) {
+  if (!valor) return valor;
+  if (typeof valor === 'string') {
+    try {
+      return JSON.parse(valor);
+    } catch (_erro) {
+      return valor;
+    }
+  }
+  return valor;
+}
+
+function autenticarAdmin(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+
+  if (!token || !adminTokens.has(token)) {
+    return res.status(401).json({ erro: 'Não autorizado.' });
+  }
+
+  next();
+}
+
+async function validarCredenciaisAdmin(usuario, senha) {
+  if (usuario === ADMIN_DEFAULT.usuario && senha === ADMIN_DEFAULT.senha) {
+    return true;
+  }
+
+  try {
+    const resultado = await pool.query(
+      `SELECT u.senha_hash
+       FROM usuarios u
+       JOIN roles r ON u.role_id = r.id
+       WHERE (u.nome = $1 OR u.email = $1) AND r.nome = 'admin'
+       LIMIT 1`,
+      [usuario]
+    );
+
+    if (resultado.rows.length === 0) return false;
+    return bcrypt.compare(senha, resultado.rows[0].senha_hash);
+  } catch (erro) {
+    console.error('Erro ao validar admin no banco:', erro);
+    return false;
+  }
+}
  
 // Rota de cadastro
 app.post('/api/cadastro', async (req, res) => {
@@ -61,6 +114,74 @@ app.post('/api/login', async (req, res) => {
   }
 });
  
+// Login do painel administrativo
+app.post('/api/admin/login', async (req, res) => {
+  const { usuario, senha } = req.body || {};
+
+  if (!usuario || !senha) {
+    return res.status(400).json({ erro: 'Usuário e senha são obrigatórios.' });
+  }
+
+  const valido = await validarCredenciaisAdmin(usuario, senha);
+  if (!valido) {
+    return res.status(401).json({ erro: 'Credenciais inválidas.' });
+  }
+
+  const token = crypto.randomBytes(24).toString('hex');
+  adminTokens.add(token);
+
+  return res.json({ token });
+});
+
+app.get('/api/admin/pedidos', autenticarAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT id, cliente_nome, cliente_email, itens, endereco, total, status, criado_em
+       FROM pedidos
+       ORDER BY criado_em DESC`
+    );
+
+    const pedidos = resultado.rows.map(pedido => ({
+      ...pedido,
+      itens: parseJsonField(pedido.itens),
+      endereco: parseJsonField(pedido.endereco)
+    }));
+
+    return res.json({ pedidos });
+  } catch (erro) {
+    console.error(erro);
+    return res.status(500).json({ erro: 'Não foi possível consultar os pedidos.' });
+  }
+});
+
+app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => {
+  const { status } = req.body || {};
+  const statusPermitidos = ['em_preparacao', 'saiu_para_entrega', 'concluido', 'cancelado'];
+
+  if (!statusPermitidos.includes(status)) {
+    return res.status(400).json({ erro: 'Status inválido.' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `UPDATE pedidos
+       SET status = $1
+       WHERE id = $2
+       RETURNING id`,
+      [status, req.params.id]
+    );
+
+    if (resultado.rowCount === 0) {
+      return res.status(404).json({ erro: 'Pedido não encontrado.' });
+    }
+
+    return res.json({ sucesso: true });
+  } catch (erro) {
+    console.error(erro);
+    return res.status(500).json({ erro: 'Não foi possível atualizar o status.' });
+  }
+});
+
 // Rota para gerar o Pix (Mercado Pago)
 app.post('/api/pagamento-pix', async (req, res) => {
   const { valor, descricao, email } = req.body;
