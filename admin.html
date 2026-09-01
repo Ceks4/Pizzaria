@@ -47,6 +47,7 @@
 
       <section id="painelConteudo" hidden>
         <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><div><button class="btn-secundario" id="btnAtualizar" type="button">ATUALIZAR</button> <button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div></div>
+        <div id="resumoAdmin" class="filtros" style="display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;"></div>
         <p class="mensagem" id="mensagemPedidos" role="status"></p>
         <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar por cliente, e-mail ou número"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select></div>
         <div class="tabela-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Entrega</th><th>Total</th><th>Status</th><th>Data</th></tr></thead><tbody id="listaPedidos"></tbody></table></div>
@@ -107,12 +108,30 @@
         const endereco = pedido.endereco;
         const destino = `${endereco.endereco}, ${endereco.numero}\n${endereco.bairro} - ${endereco.cidade}/${endereco.estado}\nCEP: ${endereco.cep}`;
         const linha = document.createElement('tr');
-        [pedido.id, `${pedido.cliente_nome}\n${pedido.cliente_email || ''}`, itens, destino, formatarPreco(pedido.total)].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
+        const clienteTexto = `${pedido.cliente_nome}\n${pedido.cliente_email || ''}${pedido.status === 'cancelado' && pedido.motivo_cancelamento ? `\nMotivo: ${pedido.motivo_cancelamento}` : ''}`;
+        [pedido.id, clienteTexto, itens, destino, formatarPreco(pedido.total)].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
         const celulaStatus = document.createElement('td');
         const seletorStatus = document.createElement('select');
         seletorStatus.className = 'status-select';
         [['em_preparacao', 'Em preparação'], ['saiu_para_entrega', 'Saiu para entrega'], ['concluido', 'Finalizado'], ['cancelado', 'Cancelado']].forEach(([valor, rotulo]) => { const opcao = document.createElement('option'); opcao.value = valor; opcao.textContent = rotulo; opcao.selected = pedido.status === valor; seletorStatus.appendChild(opcao); });
-        seletorStatus.addEventListener('change', () => atualizarStatus(pedido.id, seletorStatus));
+        seletorStatus.addEventListener('change', () => {
+          if (seletorStatus.value === 'cancelado') {
+            const motivo = window.prompt('Informe o motivo do cancelamento:', pedido.motivo_cancelamento || '');
+            if (motivo === null) {
+              seletorStatus.value = pedido.status;
+              return;
+            }
+            const motivoTrim = motivo.trim();
+            if (!motivoTrim) {
+              window.alert('O motivo do cancelamento é obrigatório.');
+              seletorStatus.value = pedido.status;
+              return;
+            }
+            atualizarStatus(pedido.id, seletorStatus.value, motivoTrim);
+            return;
+          }
+          atualizarStatus(pedido.id, seletorStatus.value);
+        });
         celulaStatus.appendChild(seletorStatus);
         linha.appendChild(celulaStatus);
         const celulaData = document.createElement('td');
@@ -120,6 +139,34 @@
         linha.appendChild(celulaData);
         lista.appendChild(linha);
       });
+    }
+
+    async function carregarResumo() {
+      try {
+        const resposta = await fetch(`${API}/api/admin/resumo`, { headers: { Authorization: `Bearer ${tokenSalvo()}` } });
+        const dados = await lerResposta(resposta);
+        if (resposta.status === 401) { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
+        if (!resposta.ok) throw new Error(dados.erro);
+
+        const resumo = document.getElementById('resumoAdmin');
+        resumo.innerHTML = `
+          <div style="padding: 12px 16px; border: 1px solid #e0d8cc; border-radius: 10px; background: #fffaf5;">
+            <small style="display: block; color: #7a6a60; text-transform: uppercase; letter-spacing: .08em;">Faturamento</small>
+            <strong style="display: block; margin-top: 8px; font-size: 1.25rem; color: #5c1f1f;">${formatarPreco(dados.faturamento || 0)}</strong>
+          </div>
+          <div style="padding: 12px 16px; border: 1px solid #e0d8cc; border-radius: 10px; background: #fffaf5;">
+            <small style="display: block; color: #7a6a60; text-transform: uppercase; letter-spacing: .08em;">Pedidos</small>
+            <strong style="display: block; margin-top: 8px; font-size: 1.25rem; color: #5c1f1f;">${dados.total_pedidos || 0}</strong>
+          </div>
+          <div style="padding: 12px 16px; border: 1px solid #e0d8cc; border-radius: 10px; background: #fffaf5;">
+            <small style="display: block; color: #7a6a60; text-transform: uppercase; letter-spacing: .08em;">Cancelados</small>
+            <strong style="display: block; margin-top: 8px; font-size: 1.25rem; color: #5c1f1f;">${dados.pedidos_cancelados || 0}</strong>
+          </div>
+        `;
+      } catch (erro) {
+        document.getElementById('mensagemPedidos').textContent = erro.message || 'Não foi possível carregar o resumo.';
+        document.getElementById('mensagemPedidos').className = 'mensagem erro';
+      }
     }
 
     async function carregarPedidos() {
@@ -135,18 +182,20 @@
     }
     document.getElementById('buscaPedidos').addEventListener('input', renderizarPedidos);
     document.getElementById('filtroStatus').addEventListener('change', renderizarPedidos);
-    document.getElementById('btnAtualizar').addEventListener('click', carregarPedidos);
-    async function atualizarStatus(pedidoId, seletor) {
-      seletor.disabled = true;
+    document.getElementById('btnAtualizar').addEventListener('click', () => { carregarResumo(); carregarPedidos(); });
+    async function atualizarStatus(pedidoId, status, motivoCancelamento = null) {
       try {
-        const resposta = await fetch(`${API}/api/admin/pedidos/${pedidoId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSalvo()}` }, body: JSON.stringify({ status: seletor.value }) });
+        const resposta = await fetch(`${API}/api/admin/pedidos/${pedidoId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSalvo()}` }, body: JSON.stringify({ status, motivo_cancelamento: motivoCancelamento }) });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(dados.erro);
+        document.getElementById('mensagemPedidos').textContent = 'Status atualizado com sucesso.';
+        document.getElementById('mensagemPedidos').className = 'mensagem sucesso';
+        await carregarResumo();
+        await carregarPedidos();
       } catch (erro) {
         document.getElementById('mensagemPedidos').textContent = erro.message || 'Não foi possível atualizar o status.';
         document.getElementById('mensagemPedidos').className = 'mensagem erro';
-        carregarPedidos();
-      } finally { seletor.disabled = false; }
+      }
     }
     document.getElementById('btnSairAdmin').addEventListener('click', () => { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); });
     if (tokenSalvo()) mostrarPainel();

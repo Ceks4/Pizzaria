@@ -72,10 +72,12 @@
         const bloco = document.createElement('article');
         bloco.className = 'pedido-item';
         const indiceAtual = etapas.indexOf(pedido.status);
-        const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join(', ');
-        const endereco = pedido.endereco;
+        const itens = Array.isArray(pedido.itens) ? pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join(', ') : 'Pedido sem itens';
+        const endereco = pedido.endereco || {};
         const podeCancelar = pedido.status === 'em_preparacao';
-        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">${pedido.status === 'cancelado' ? 'Cancelado' : 'Finalizado'}</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco}, ${endereco.numero}, ${endereco.cidade}/${endereco.estado}`)}</div>${podeCancelar ? '<button type="button" class="btn-cancelar">Cancelar pedido</button>' : ''}`;
+        const motivo = pedido.motivo_cancelamento || pedido.motivoCancelamento || pedido.motivo || 'Pedido cancelado pelo estabelecimento.';
+        const motivoCancelamento = pedido.status === 'cancelado' ? `<div class="resumo-cliente"><strong>Motivo do cancelamento:</strong> ${escaparHtml(motivo)}</div>` : '';
+        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">${pedido.status === 'cancelado' ? 'Cancelado' : 'Finalizado'}</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco || ''}, ${endereco.numero || ''}, ${endereco.cidade || ''}/${endereco.estado || ''}`.replace(/, ,/g, ',').replace(/\s+,\s+/g, ', ').replace(/, $/, ''))}</div>${motivoCancelamento}${podeCancelar ? '<button type="button" class="btn-cancelar">Cancelar pedido</button>' : ''}`;
         if (podeCancelar) bloco.querySelector('.btn-cancelar').addEventListener('click', () => cancelarPedido(pedido.id, bloco));
         lista.appendChild(bloco);
       });
@@ -84,10 +86,16 @@
 
     async function cancelarPedido(id, bloco) {
       if (!confirm('Deseja realmente cancelar este pedido?')) return;
+      const motivo = window.prompt('Informe o motivo do cancelamento:');
+      if (motivo === null) return;
+      if (!motivo.trim()) {
+        alert('O motivo do cancelamento é obrigatório.');
+        return;
+      }
       const botao = bloco.querySelector('.btn-cancelar');
       botao.disabled = true;
       try {
-        const resposta = await fetch(`${API}/api/pedidos/cliente/${id}/cancelar`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: emailCliente }) });
+        const resposta = await fetch(`${API}/api/pedidos/cliente/${id}/cancelar`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: emailCliente, motivo_cancelamento: motivo.trim() }) });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(dados.erro);
         await consultarPedido();

@@ -17,6 +17,16 @@ const ADMIN_DEFAULT = {
 };
 const adminTokens = new Set();
 
+async function garantirColunasPedidos() {
+  try {
+    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT`);
+  } catch (erro) {
+    console.error('Erro ao garantir coluna motivo_cancelamento:', erro);
+  }
+}
+
+guardarColunasPedido = garantirColunasPedidos();
+
 function parseJsonField(valor) {
   if (!valor) return valor;
   if (typeof valor === 'string') {
@@ -133,10 +143,34 @@ app.post('/api/admin/login', async (req, res) => {
   return res.json({ token });
 });
 
+app.get('/api/admin/resumo', autenticarAdmin, async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT
+         COUNT(*)::int AS total_pedidos,
+         COALESCE(SUM(CASE WHEN status <> 'cancelado' THEN total ELSE 0 END), 0)::numeric AS faturamento,
+         COUNT(*) FILTER (WHERE status = 'cancelado')::int AS pedidos_cancelados,
+         COUNT(*) FILTER (WHERE status IN ('em_preparacao', 'saiu_para_entrega'))::int AS pedidos_em_andamento
+       FROM pedidos`
+    );
+
+    const resumo = resultado.rows[0];
+    return res.json({
+      total_pedidos: Number(resumo.total_pedidos),
+      faturamento: Number(resumo.faturamento || 0),
+      pedidos_cancelados: Number(resumo.pedidos_cancelados),
+      pedidos_em_andamento: Number(resumo.pedidos_em_andamento)
+    });
+  } catch (erro) {
+    console.error(erro);
+    return res.status(500).json({ erro: 'Não foi possível consultar o resumo.' });
+  }
+});
+
 app.get('/api/admin/pedidos', autenticarAdmin, async (req, res) => {
   try {
     const resultado = await pool.query(
-      `SELECT id, cliente_nome, cliente_email, itens, endereco, total, status, criado_em
+      `SELECT id, cliente_nome, cliente_email, itens, endereco, total, status, motivo_cancelamento, criado_em
        FROM pedidos
        ORDER BY criado_em DESC`
     );
@@ -155,7 +189,7 @@ app.get('/api/admin/pedidos', autenticarAdmin, async (req, res) => {
 });
 
 app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => {
-  const { status } = req.body || {};
+  const { status, motivo_cancelamento } = req.body || {};
   const statusPermitidos = ['em_preparacao', 'saiu_para_entrega', 'concluido', 'cancelado'];
 
   if (!statusPermitidos.includes(status)) {
@@ -163,12 +197,22 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
   }
 
   try {
+    const motivo = typeof motivo_cancelamento === 'string' ? motivo_cancelamento.trim() : '';
+    if (status === 'cancelado' && !motivo) {
+      return res.status(400).json({ erro: 'Informe o motivo do cancelamento.' });
+    }
+
     const resultado = await pool.query(
-      `UPDATE pedidos
-       SET status = $1
-       WHERE id = $2
-       RETURNING id`,
-      [status, req.params.id]
+      status === 'cancelado'
+        ? `UPDATE pedidos
+           SET status = $1, motivo_cancelamento = $2
+           WHERE id = $3
+           RETURNING id`
+        : `UPDATE pedidos
+           SET status = $1, motivo_cancelamento = NULL
+           WHERE id = $2
+           RETURNING id`,
+      status === 'cancelado' ? [status, motivo, req.params.id] : [status, req.params.id]
     );
 
     if (resultado.rowCount === 0) {
@@ -244,14 +288,21 @@ app.get('/api/pedidos/cliente', async (req, res) => {
  
   try {
     const resultado = await pool.query(
-      `SELECT id, itens, total, endereco, status, criado_em
+      `SELECT id, itens, total, endereco, status, motivo_cancelamento, criado_em
        FROM pedidos
        WHERE cliente_email = $1
        ORDER BY criado_em DESC`,
       [email]
     );
  
-    res.json({ pedidos: resultado.rows });
+    const pedidos = resultado.rows.map(pedido => ({
+      ...pedido,
+      motivo_cancelamento: pedido.motivo_cancelamento || null,
+      itens: parseJsonField(pedido.itens),
+      endereco: parseJsonField(pedido.endereco)
+    }));
+
+    res.json({ pedidos });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: 'Não foi possível consultar os pedidos.' });
@@ -261,22 +312,27 @@ app.get('/api/pedidos/cliente', async (req, res) => {
 // Cancelar pedido (só se ainda estiver em preparação)
 app.patch('/api/pedidos/cliente/:id/cancelar', async (req, res) => {
   const { id } = req.params;
-  const { email } = req.body;
+  const { email, motivo_cancelamento, motivo } = req.body || {};
+  const motivoTexto = (motivo_cancelamento || motivo || '').toString().trim();
+ 
+  if (!motivoTexto) {
+    return res.status(400).json({ erro: 'Informe o motivo do cancelamento.' });
+  }
  
   try {
     const resultado = await pool.query(
       `UPDATE pedidos
-       SET status = 'cancelado'
+       SET status = 'cancelado', motivo_cancelamento = $3
        WHERE id = $1 AND cliente_email = $2 AND status = 'em_preparacao'
-       RETURNING id`,
-      [id, email]
+       RETURNING id, motivo_cancelamento`,
+      [id, email, motivoTexto]
     );
  
     if (resultado.rows.length === 0) {
       return res.status(400).json({ erro: 'Pedido não encontrado ou não pode mais ser cancelado.' });
     }
  
-    res.json({ sucesso: true });
+    res.json({ sucesso: true, motivo_cancelamento: resultado.rows[0].motivo_cancelamento });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: 'Não foi possível cancelar o pedido.' });
