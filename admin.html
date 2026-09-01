@@ -62,7 +62,7 @@
     })();
     const loginAdmin = document.getElementById('loginAdmin');
     const painelConteudo = document.getElementById('painelConteudo');
-    const tokenSalvo = () => sessionStorage.getItem('tokenAdmin');
+    const tokenSalvo = () => localStorage.getItem('tokenAdmin');
     let pedidos = [];
     const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -74,7 +74,7 @@
       return resposta.json();
     }
 
-    function mostrarPainel() { loginAdmin.hidden = true; painelConteudo.hidden = false; carregarPedidos(); }
+    function mostrarPainel() { loginAdmin.hidden = true; painelConteudo.hidden = false; carregarResumo(); carregarPedidos(); }
     function mostrarLogin() { loginAdmin.hidden = false; painelConteudo.hidden = true; }
 
     document.getElementById('formLoginAdmin').addEventListener('submit', async evento => {
@@ -87,7 +87,7 @@
         const resposta = await fetch(`${API}/api/admin/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario: document.getElementById('usuarioAdmin').value, senha: document.getElementById('senhaAdmin').value }) });
         const dados = await lerResposta(resposta);
         if (!resposta.ok) throw new Error(dados.erro);
-        sessionStorage.setItem('tokenAdmin', dados.token);
+        localStorage.setItem('tokenAdmin', dados.token);
         mostrarPainel();
       } catch (erro) { mensagem.textContent = erro.message || 'Não foi possível entrar.'; mensagem.className = 'mensagem erro'; }
       finally { botao.disabled = false; }
@@ -145,7 +145,7 @@
       try {
         const resposta = await fetch(`${API}/api/admin/resumo`, { headers: { Authorization: `Bearer ${tokenSalvo()}` } });
         const dados = await lerResposta(resposta);
-        if (resposta.status === 401) { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
+        if (resposta.status === 401) { localStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
         if (!resposta.ok) throw new Error(dados.erro);
 
         const resumo = document.getElementById('resumoAdmin');
@@ -174,7 +174,7 @@
       try {
         const resposta = await fetch(`${API}/api/admin/pedidos`, { headers: { Authorization: `Bearer ${tokenSalvo()}` } });
         const dados = await lerResposta(resposta);
-        if (resposta.status === 401) { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
+        if (resposta.status === 401) { localStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
         if (!resposta.ok) throw new Error(dados.erro);
         pedidos = dados.pedidos;
         renderizarPedidos();
@@ -197,7 +197,7 @@
         document.getElementById('mensagemPedidos').className = 'mensagem erro';
       }
     }
-    document.getElementById('btnSairAdmin').addEventListener('click', () => { sessionStorage.removeItem('tokenAdmin'); mostrarLogin(); });
+    document.getElementById('btnSairAdmin').addEventListener('click', () => { localStorage.removeItem('tokenAdmin'); mostrarLogin(); });
     if (tokenSalvo()) mostrarPainel();
   </script>
 </body>

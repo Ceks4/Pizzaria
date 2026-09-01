@@ -50,7 +50,16 @@
   const form = document.getElementById('formLogin');
   const mensagem = document.getElementById('mensagem');
   const btn = document.getElementById('btnEntrar');
- 
+
+  try {
+    const usuarioSalvo = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+    if (usuarioSalvo && usuarioSalvo.email) {
+      window.location.href = 'cardapio.html';
+    }
+  } catch (erro) {
+    localStorage.removeItem('usuarioLogado');
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     mensagem.textContent = '';
