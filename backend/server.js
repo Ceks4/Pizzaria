@@ -101,18 +101,13 @@ app.get('/api/pagamento-status/:id', async (req, res) => {
  
 // Criar pedido (chamado depois que o Pix é aprovado)
 app.post('/api/pedidos', async (req, res) => {
-  const { email, itens, total, endereco, pagamentoId } = req.body;
+  const { email, nome, itens, total, endereco } = req.body;
  
   try {
-    const usuario = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email]);
-    if (usuario.rows.length === 0) return res.status(404).json({ erro: 'Usuário não encontrado.' });
- 
-    const usuarioId = usuario.rows[0].id;
- 
     await pool.query(
-      `INSERT INTO pedidos (usuario_id, itens, total, endereco, pagamento_id)
+      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total)
        VALUES ($1, $2, $3, $4, $5)`,
-      [usuarioId, JSON.stringify(itens), total, JSON.stringify(endereco), pagamentoId]
+      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), total]
     );
  
     res.json({ sucesso: true });
@@ -128,11 +123,10 @@ app.get('/api/pedidos/cliente', async (req, res) => {
  
   try {
     const resultado = await pool.query(
-      `SELECT p.id, p.itens, p.total, p.endereco, p.status, p.criado_em
-       FROM pedidos p
-       JOIN usuarios u ON p.usuario_id = u.id
-       WHERE u.email = $1
-       ORDER BY p.criado_em DESC`,
+      `SELECT id, itens, total, endereco, status, criado_em
+       FROM pedidos
+       WHERE cliente_email = $1
+       ORDER BY criado_em DESC`,
       [email]
     );
  
@@ -150,11 +144,10 @@ app.patch('/api/pedidos/cliente/:id/cancelar', async (req, res) => {
  
   try {
     const resultado = await pool.query(
-      `UPDATE pedidos p
+      `UPDATE pedidos
        SET status = 'cancelado'
-       FROM usuarios u
-       WHERE p.usuario_id = u.id AND p.id = $1 AND u.email = $2 AND p.status = 'em_preparacao'
-       RETURNING p.id`,
+       WHERE id = $1 AND cliente_email = $2 AND status = 'em_preparacao'
+       RETURNING id`,
       [id, email]
     );
  

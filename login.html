@@ -71,9 +71,13 @@
       const dados = await resposta.json();
  
       if (dados.sucesso) {
-        if (dados.usuario) {
-          localStorage.setItem('usuarioLogado', JSON.stringify(dados.usuario));
-        }
+        const usuario = dados.usuario || {
+          nome: dados.nome,
+          email: document.getElementById('email').value,
+          papel: dados.papel
+        };
+
+        localStorage.setItem('usuarioLogado', JSON.stringify(usuario));
         mensagem.textContent = 'Login feito com sucesso!';
         mensagem.className = 'mensagem sucesso';
         setTimeout(() => window.location.href = 'cardapio.html', 800);

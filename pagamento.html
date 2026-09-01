@@ -197,10 +197,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: usuario.email || '',
+          nome: usuario.nome || 'Cliente',
           itens: carrinho,
           total: total,
-          endereco: endereco,
-          pagamentoId: pagamentoId
+          endereco: endereco
         })
       });
     } catch (erro) {
