@@ -156,10 +156,16 @@
     let carrinho = [];
 
     try {
-      const carrinhoSalvo = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
+      const carrinhoJson = localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]';
+      const carrinhoSalvo = JSON.parse(carrinhoJson);
       carrinho = Array.isArray(carrinhoSalvo) ? carrinhoSalvo : [];
+      if (carrinho.length > 0) {
+        localStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+        sessionStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+      }
     } catch (erro) {
       localStorage.removeItem(chaveCarrinho);
+      sessionStorage.removeItem(chaveCarrinho);
     }
 
     const listaItens = document.getElementById('listaItens');
@@ -262,6 +268,7 @@
       localStorage.setItem('enderecoEntrega', JSON.stringify(pedido.endereco));
       localStorage.removeItem(chavePedidoPendente);
       localStorage.removeItem(chaveCarrinho);
+      sessionStorage.removeItem(chaveCarrinho);
       mensagem.textContent = `Pagamento concluído e pedido #${dados.pedidoId} confirmado!`;
       mensagem.className = 'mensagem sucesso';
       btnFinalizar.textContent = 'PEDIDO CONFIRMADO';
