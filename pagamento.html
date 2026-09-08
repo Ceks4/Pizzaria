@@ -177,7 +177,8 @@
   let carrinho = [];
 
   try {
-    const carrinhoSalvo = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
+    const carrinhoJson = localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]';
+    const carrinhoSalvo = JSON.parse(carrinhoJson);
     carrinho = Array.isArray(carrinhoSalvo) ? carrinhoSalvo : [];
 
     if (carrinho.length === 0) {
@@ -185,11 +186,17 @@
       if (Array.isArray(carrinhoLegacy) && carrinhoLegacy.length > 0) {
         carrinho = carrinhoLegacy;
         localStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+        sessionStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
         localStorage.removeItem('carrinho');
       }
     }
+
+    if (carrinho.length > 0) {
+      sessionStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+    }
   } catch (erro) {
     localStorage.removeItem(chaveCarrinho);
+    sessionStorage.removeItem(chaveCarrinho);
     localStorage.removeItem('carrinho');
   }
 
@@ -317,6 +324,7 @@
               pagamentoId = dados.id;
               await salvarPedido(pagamentoId);
               localStorage.removeItem(chaveCarrinho);
+              sessionStorage.removeItem(chaveCarrinho);
               localStorage.removeItem('carrinho');
               window.location.href = 'status.html';
               return;
@@ -444,6 +452,7 @@
         await salvarPedido();
 
         localStorage.removeItem(chaveCarrinho);
+        sessionStorage.removeItem(chaveCarrinho);
         localStorage.removeItem('carrinho');
 
         setTimeout(() => {
