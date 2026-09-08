@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
@@ -24,9 +26,23 @@ function normalizarValor(valor, minimo = 0.01) {
   return Math.abs(numero - arredondado) < Number.EPSILON * 10 ? arredondado : null;
 }
 
+function mensagemErroPagamentoMercadoPago(valor) {
+  const entrada = String(valor || '').trim();
+  const chave = entrada.toLowerCase();
+  const mensagens = {
+    cc_rejected_high_risk: 'Pagamento não autorizado por segurança. Tente outro cartão ou Pix.'
+  };
+
+  if (mensagens[chave]) return mensagens[chave];
+  if (chave.includes('cc_rejected_high_risk')) return mensagens.cc_rejected_high_risk;
+
+  return valor || null;
+}
+
 function extrairErroMercadoPago(erro) {
   const causa = Array.isArray(erro?.cause) ? erro.cause[0] : erro?.cause;
-  return causa?.description || causa?.message || erro?.message || null;
+  const detalhe = causa?.description || causa?.code || causa?.message || erro?.message || null;
+  return mensagemErroPagamentoMercadoPago(detalhe);
 }
 
 function textoPagamento(valor, limite = 120) {
@@ -383,15 +399,15 @@ app.post('/api/pagamento-cartao', async (req, res) => {
   const deviceId = textoPagamento(device_id, 255);
 
   if (!process.env.MP_ACCESS_TOKEN) {
-    return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
+    return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor. Configure MP_ACCESS_TOKEN e MP_PUBLIC_KEY.' });
   }
 
   if (valor === null || !token || !payment_method_id || !payer?.email) {
     return res.status(400).json({ erro: 'Dados do pagamento incompletos.' });
   }
 
-  if (![11, 14].includes(documento.length)) {
-    return res.status(400).json({ erro: 'Informe um CPF válido para processar o pagamento.' });
+  if (documento && ![11, 14].includes(documento.length)) {
+    return res.status(400).json({ erro: 'Informe um CPF ou CNPJ válido para processar o pagamento.' });
   }
 
   try {
@@ -408,10 +424,12 @@ app.post('/api/pagamento-cartao', async (req, res) => {
         ...(issuer_id ? { issuer_id } : {}),
         payer: {
           email: payer.email,
-          identification: {
-            type: textoPagamento(payer.identification.type, 10) || (documento.length === 11 ? 'CPF' : 'CNPJ'),
-            number: documento
-          },
+          ...(documento ? {
+            identification: {
+              type: textoPagamento(payer.identification.type, 10) || (documento.length === 11 ? 'CPF' : 'CNPJ'),
+              number: documento
+            }
+          } : {}),
           ...(nomeComprador.first_name ? { first_name: nomeComprador.first_name } : {}),
           ...(nomeComprador.last_name ? { last_name: nomeComprador.last_name } : {}),
           ...(nomeComprador.address ? { address: nomeComprador.address } : {})

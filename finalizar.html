@@ -170,7 +170,60 @@
 
     const listaItens = document.getElementById('listaItens');
     const totalPedido = document.getElementById('totalPedido');
-    const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', {
+    const parsePreco = valor => {
+      if (valor === null || valor === undefined || valor === '') return 0;
+
+      const texto = String(valor).trim().replace(/R\$/g, '');
+      if (!texto) return 0;
+
+      if (texto.includes(',') && texto.includes('.')) {
+        return Number(texto.replace(/\./g, '').replace(',', '.'));
+      }
+
+      if (texto.includes(',')) {
+        return Number(texto.replace(',', '.'));
+      }
+
+      if (texto.includes('.')) {
+        const partes = texto.split('.');
+        if (partes.length > 2) {
+          return Number(partes.join(''));
+        }
+        if (partes[1] && partes[1].length <= 2) {
+          return Number(texto);
+        }
+        return Number(texto.replace(/\./g, ''));
+      }
+
+      return Number(texto);
+    };
+    const normalizarCarrinho = lista => {
+      if (!Array.isArray(lista)) return [];
+
+      return lista
+        .filter(item => item && item.nome)
+        .map(item => ({
+          ...item,
+          preco: parsePreco(item.preco),
+          quantidade: Number(item.quantidade) > 0 ? Number(item.quantidade) : 1
+        }))
+        .filter(item => Number(item.preco) > 0);
+    };
+    const limparCarrinhoInvalido = () => {
+      const itemSalvo = localStorage.getItem(chaveCarrinho);
+      if (!itemSalvo) return;
+
+      try {
+        const lista = JSON.parse(itemSalvo);
+        const valido = Array.isArray(lista) && lista.some(item => item && item.nome && Number(parsePreco(item.preco)) > 0);
+        if (!valido) {
+          localStorage.removeItem(chaveCarrinho);
+        }
+      } catch (erro) {
+        localStorage.removeItem(chaveCarrinho);
+      }
+    };
+    const formatarPreco = valor => Number(valor || 0).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     });
@@ -183,13 +236,16 @@
       return resposta.json();
     }
 
+    limparCarrinhoInvalido();
+    const carrinhoNormalizado = normalizarCarrinho(JSON.parse(localStorage.getItem(chaveCarrinho) || '[]'));
+
     let total = 0;
-    if (carrinho.length === 0) {
+    if (carrinhoNormalizado.length === 0) {
       listaItens.innerHTML = '<p style="font-size:0.85rem;color:#7a6a60;">Nenhum item no carrinho.</p>';
     } else {
-      carrinho.forEach(item => {
+      carrinhoNormalizado.forEach(item => {
         const quantidade = Number(item.quantidade) || 0;
-        const preco = Number(item.preco) || 0;
+        const preco = parsePreco(item.preco);
         const subtotal = preco * quantidade;
         total += subtotal;
 
