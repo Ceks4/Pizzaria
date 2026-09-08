@@ -6,6 +6,7 @@
 <title>Pagamento — LosPizzanitos</title>
 <link rel="stylesheet" href="auth.css">
 <script src="https://sdk.mercadopago.com/js/v2"></script>
+<script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
 <style>
   .card { max-width: 460px; text-align: center; }
   .valor-total {
@@ -231,6 +232,16 @@
     return mensagens[detalhe] || 'O pagamento não foi aprovado. Tente outro cartão ou pague com Pix.';
   }
 
+  async function obterDeviceId() {
+    for (let tentativa = 0; tentativa < 20; tentativa += 1) {
+      if (typeof window.MP_DEVICE_SESSION_ID === 'string' && window.MP_DEVICE_SESSION_ID) {
+        return window.MP_DEVICE_SESSION_ID;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return '';
+  }
+
   async function inicializarCartao() {
     if (controladorCartao) return;
 
@@ -263,17 +274,29 @@
         },
         onSubmit: async dadosCartao => {
           try {
+            const documento = String(dadosCartao?.payer?.identification?.number || '').replace(/\D/g, '');
+            if (![11, 14].includes(documento.length)) {
+              throw new Error('Informe um CPF válido para continuar com o pagamento.');
+            }
+
+            const deviceId = await obterDeviceId();
+            if (!deviceId) {
+              throw new Error('Não foi possível validar a segurança do dispositivo. Atualize a página e desative bloqueadores de conteúdo para tentar novamente.');
+            }
+
+            const emailPagamento = String(dadosCartao?.payer?.email || '').trim().toLowerCase();
+            const nomeComprador = emailPagamento === 'test@testuser.com'
+              ? 'APRO'
+              : (usuario.nome || '');
             const respostaPagamento = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 ...dadosCartao,
                 description: 'Pedido LosPizzanitos',
-                device_id: typeof window.MP_DEVICE_SESSION_ID === 'string'
-                  ? window.MP_DEVICE_SESSION_ID
-                  : '',
+                device_id: deviceId,
                 order: {
-                  buyer_name: usuario.nome || '',
+                  buyer_name: nomeComprador,
                   items: carrinho.map(item => ({
                     id: item.id,
                     title: item.nome,
