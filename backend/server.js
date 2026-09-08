@@ -11,6 +11,23 @@ app.use(cors());
  
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 
+function credenciaisMercadoPagoConfiguradas() {
+  return Boolean(process.env.MP_ACCESS_TOKEN && process.env.MP_PUBLIC_KEY);
+}
+
+function normalizarValor(valor, minimo = 0.01) {
+  const numero = Number(valor);
+  if (!Number.isFinite(numero) || numero < minimo) return null;
+
+  const arredondado = Math.round((numero + Number.EPSILON) * 100) / 100;
+  return Math.abs(numero - arredondado) < Number.EPSILON * 10 ? arredondado : null;
+}
+
+function extrairErroMercadoPago(erro) {
+  const causa = Array.isArray(erro?.cause) ? erro.cause[0] : erro?.cause;
+  return causa?.description || causa?.message || erro?.message || null;
+}
+
 const ADMIN_DEFAULT = {
   usuario: process.env.ADMIN_USER || 'admin',
   senha: process.env.ADMIN_PASS || 'admin123'
@@ -252,16 +269,26 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
 // Rota para gerar o Pix (Mercado Pago)
 app.post('/api/pagamento-pix', async (req, res) => {
   const { valor, descricao, email } = req.body;
+  const valorNormalizado = normalizarValor(valor);
+
+  if (!process.env.MP_ACCESS_TOKEN) {
+    return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
+  }
+
+  if (valorNormalizado === null || !email) {
+    return res.status(400).json({ erro: 'Valor ou e-mail inválido para gerar o Pix.' });
+  }
  
   try {
     const payment = new Payment(client);
     const resultado = await payment.create({
       body: {
-        transaction_amount: valor,
+        transaction_amount: valorNormalizado,
         description: descricao,
         payment_method_id: 'pix',
         payer: { email: email }
-      }
+      },
+      requestOptions: { idempotencyKey: crypto.randomUUID() }
     });
  
     res.json({
@@ -271,12 +298,16 @@ app.post('/api/pagamento-pix', async (req, res) => {
     });
   } catch (erro) {
     console.error(erro);
-    res.status(500).json({ erro: 'Erro ao gerar Pix' });
+    res.status(502).json({ erro: extrairErroMercadoPago(erro) || 'Erro ao gerar Pix.' });
   }
 });
 
 app.get('/api/pagamento-config', (_req, res) => {
-  res.json({ publicKey: process.env.MP_PUBLIC_KEY || '' });
+  if (!credenciaisMercadoPagoConfiguradas()) {
+    return res.status(503).json({ erro: 'As credenciais do Mercado Pago não estão completas.' });
+  }
+
+  return res.json({ publicKey: process.env.MP_PUBLIC_KEY });
 });
 
 // Processa o token do cartão gerado pelo Payment Brick do Mercado Pago
@@ -290,8 +321,13 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     issuer_id,
     payer
   } = req.body || {};
+  const valor = normalizarValor(transaction_amount, 1);
 
-  if (!Number.isFinite(Number(transaction_amount)) || Number(transaction_amount) <= 0 || !token || !payment_method_id || !payer?.email) {
+  if (!process.env.MP_ACCESS_TOKEN) {
+    return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
+  }
+
+  if (valor === null || !token || !payment_method_id || !payer?.email) {
     return res.status(400).json({ erro: 'Dados do pagamento incompletos.' });
   }
 
@@ -299,7 +335,7 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     const payment = new Payment(client);
     const resultado = await payment.create({
       body: {
-        transaction_amount: Number(transaction_amount),
+        transaction_amount: valor,
         token,
         description: description || 'Pedido LosPizzanitos',
         installments: Number(installments) || 1,
@@ -309,13 +345,14 @@ app.post('/api/pagamento-cartao', async (req, res) => {
           email: payer.email,
           ...(payer.identification ? { identification: payer.identification } : {})
         }
-      }
+      },
+      requestOptions: { idempotencyKey: crypto.randomUUID() }
     });
 
     return res.json({ id: resultado.id, status: resultado.status, detalhe: resultado.status_detail });
   } catch (erro) {
     console.error(erro);
-    const detalhe = erro?.cause?.[0]?.description || erro?.message;
+    const detalhe = extrairErroMercadoPago(erro);
     return res.status(502).json({
       erro: detalhe || 'Não foi possível processar o cartão. Confira os dados e tente novamente.'
     });

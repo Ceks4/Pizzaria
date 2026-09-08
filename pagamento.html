@@ -148,8 +148,9 @@
         <span class="metodo-seta" aria-hidden="true">&#8250;</span>
       </button>
       <p class="nota-seguranca">Pagamento protegido. Os dados do cartão não ficam nesta página.</p>
-      <p class="mensagem" id="mensagem"></p>
     </div>
+
+    <p class="mensagem" id="mensagem" role="status" aria-live="polite"></p>
  
     <div id="areaQrCode">
       <img id="qrcodeImg" alt="QR Code Pix">
@@ -167,6 +168,7 @@
  
 <script>
   const URL_BACKEND = 'https://pizzaria-asml.onrender.com';
+  const VALOR_MINIMO_CARTAO = 1;
  
   // ---- Carrega carrinho e endereço salvos ----
   const chaveCarrinho = 'carrinhoPizzaria';
@@ -194,6 +196,7 @@
 
   let total = 0;
   carrinho.forEach(item => total += item.preco * item.quantidade);
+  total = Number(total.toFixed(2));
   document.getElementById('valorTotal').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
  
   const btnGerarPix = document.getElementById('btnGerarPix');
@@ -207,10 +210,18 @@
  
   let pagamentoId = null;
   let intervaloChecagem = null;
-  let cartaoInicializado = false;
+  let controladorCartao = null;
+
+  function validarTotalPagamento(valor, minimo = 0.01) {
+    return Number.isFinite(valor) && valor >= minimo && Number(valor.toFixed(2)) === valor;
+  }
 
   async function inicializarCartao() {
-    if (cartaoInicializado) return;
+    if (controladorCartao) return;
+
+    if (!validarTotalPagamento(total, VALOR_MINIMO_CARTAO)) {
+      throw new Error(`O valor mínimo para pagar com cartão é R$ ${VALOR_MINIMO_CARTAO.toFixed(2).replace('.', ',')}.`);
+    }
 
     const resposta = await fetch(`${URL_BACKEND}/api/pagamento-config`);
     const config = await lerResposta(resposta);
@@ -220,16 +231,12 @@
 
     const mp = new MercadoPago(config.publicKey, { locale: 'pt-BR' });
     const bricksBuilder = mp.bricks();
-    await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
+    controladorCartao = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
       initialization: {
         amount: total,
         payer: { email: usuario.email || '' }
       },
       customization: {
-        paymentMethods: {
-          creditCard: 'all',
-          debitCard: 'all'
-        },
         visual: { style: { theme: 'default' } }
       },
       callbacks: {
@@ -251,9 +258,7 @@
             });
             const dados = await lerResposta(respostaPagamento);
             if (!respostaPagamento.ok) {
-              mensagem.textContent = dados.erro || 'Não foi possível processar o cartão.';
-              mensagem.className = 'mensagem erro';
-              return;
+              throw new Error(dados.erro || 'Não foi possível processar o cartão.');
             }
 
             if (dados.status === 'approved') {
@@ -265,16 +270,15 @@
               return;
             }
 
-            mensagem.textContent = dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.';
-            mensagem.className = 'mensagem erro';
+            throw new Error(dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.');
           } catch (erro) {
             mensagem.textContent = erro.message || 'Não foi possível processar o cartão.';
             mensagem.className = 'mensagem erro';
+            throw erro;
           }
         }
       }
     });
-    cartaoInicializado = true;
   }
 
   async function lerResposta(resposta) {
@@ -311,6 +315,10 @@
   });
 
   btnVoltarMetodos.addEventListener('click', () => {
+    if (controladorCartao) {
+      controladorCartao.unmount();
+      controladorCartao = null;
+    }
     areaCartao.style.display = 'none';
     areaInicial.style.display = 'grid';
     btnPagarCartao.disabled = false;
