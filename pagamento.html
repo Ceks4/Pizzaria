@@ -6,6 +6,7 @@
 <title>Pagamento — LosPizzanitos</title>
 <link rel="stylesheet" href="auth.css">
 <script src="https://sdk.mercadopago.com/js/v2"></script>
+<script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
 <style>
   .card { max-width: 460px; text-align: center; }
   .valor-total {
@@ -216,6 +217,31 @@
     return Number.isFinite(valor) && valor >= minimo && Number(valor.toFixed(2)) === valor;
   }
 
+  function mensagemRecusaCartao(detalhe) {
+    const mensagens = {
+      cc_rejected_high_risk: 'Pagamento recusado por segurança pelo Mercado Pago. Não repita a tentativa agora; use outro meio de pagamento ou entre em contato com o Mercado Pago.',
+      cc_rejected_bad_filled_card_number: 'Confira o número do cartão.',
+      cc_rejected_bad_filled_date: 'Confira a validade do cartão.',
+      cc_rejected_bad_filled_security_code: 'Confira o código de segurança do cartão.',
+      cc_rejected_insufficient_amount: 'O cartão não possui limite ou saldo suficiente.',
+      cc_rejected_call_for_authorize: 'O banco precisa autorizar essa compra. Entre em contato com o emissor do cartão.',
+      cc_rejected_card_disabled: 'O cartão está bloqueado ou desativado. Entre em contato com o banco.',
+      cc_rejected_duplicated_payment: 'Uma cobrança igual já foi enviada. Aguarde e confira antes de tentar novamente.'
+    };
+
+    return mensagens[detalhe] || 'O pagamento não foi aprovado. Tente outro cartão ou pague com Pix.';
+  }
+
+  async function obterDeviceId() {
+    for (let tentativa = 0; tentativa < 20; tentativa += 1) {
+      if (typeof window.MP_DEVICE_SESSION_ID === 'string' && window.MP_DEVICE_SESSION_ID) {
+        return window.MP_DEVICE_SESSION_ID;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return '';
+  }
+
   async function inicializarCartao() {
     if (controladorCartao) return;
 
@@ -248,12 +274,37 @@
         },
         onSubmit: async dadosCartao => {
           try {
+            const documento = String(dadosCartao?.payer?.identification?.number || '').replace(/\D/g, '');
+            if (![11, 14].includes(documento.length)) {
+              throw new Error('Informe um CPF válido para continuar com o pagamento.');
+            }
+
+            const deviceId = await obterDeviceId();
+            if (!deviceId) {
+              throw new Error('Não foi possível validar a segurança do dispositivo. Atualize a página e desative bloqueadores de conteúdo para tentar novamente.');
+            }
+
+            const emailPagamento = String(dadosCartao?.payer?.email || '').trim().toLowerCase();
+            const nomeComprador = emailPagamento === 'test@testuser.com'
+              ? 'APRO'
+              : (usuario.nome || '');
             const respostaPagamento = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 ...dadosCartao,
-                description: 'Pedido LosPizzanitos'
+                description: 'Pedido LosPizzanitos',
+                device_id: deviceId,
+                order: {
+                  buyer_name: nomeComprador,
+                  items: carrinho.map(item => ({
+                    id: item.id,
+                    title: item.nome,
+                    quantity: item.quantidade,
+                    unit_price: item.preco
+                  })),
+                  address: endereco
+                }
               })
             });
             const dados = await lerResposta(respostaPagamento);
@@ -270,7 +321,7 @@
               return;
             }
 
-            throw new Error(dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.');
+            throw new Error(mensagemRecusaCartao(dados.detalhe));
           } catch (erro) {
             mensagem.textContent = erro.message || 'Não foi possível processar o cartão.';
             mensagem.className = 'mensagem erro';
