@@ -250,7 +250,11 @@
               })
             });
             const dados = await lerResposta(respostaPagamento);
-            if (!respostaPagamento.ok) throw new Error(dados.erro || 'Não foi possível processar o cartão.');
+            if (!respostaPagamento.ok) {
+              mensagem.textContent = dados.erro || 'Não foi possível processar o cartão.';
+              mensagem.className = 'mensagem erro';
+              return;
+            }
 
             if (dados.status === 'approved') {
               pagamentoId = dados.id;
@@ -261,11 +265,11 @@
               return;
             }
 
-            throw new Error(dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.');
+            mensagem.textContent = dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.';
+            mensagem.className = 'mensagem erro';
           } catch (erro) {
             mensagem.textContent = erro.message || 'Não foi possível processar o cartão.';
             mensagem.className = 'mensagem erro';
-            throw erro;
           }
         }
       }
