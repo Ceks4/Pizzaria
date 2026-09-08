@@ -6,6 +6,7 @@ const pool = require('./db');
 const { MercadoPagoConfig, Payment, PaymentRefund } = require('mercadopago');
  
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(cors());
  
@@ -26,6 +27,59 @@ function normalizarValor(valor, minimo = 0.01) {
 function extrairErroMercadoPago(erro) {
   const causa = Array.isArray(erro?.cause) ? erro.cause[0] : erro?.cause;
   return causa?.description || causa?.message || erro?.message || null;
+}
+
+function textoPagamento(valor, limite = 120) {
+  return typeof valor === 'string' ? valor.trim().slice(0, limite) : '';
+}
+
+function montarDadosAntifraude(req, order) {
+  const nomeCompleto = textoPagamento(order?.buyer_name, 120);
+  const partesNome = nomeCompleto.split(/\s+/).filter(Boolean);
+  const firstName = partesNome.shift() || '';
+  const lastName = partesNome.join(' ');
+  const endereco = order?.address || {};
+  const streetName = textoPagamento(endereco.endereco, 120);
+  const streetNumber = textoPagamento(endereco.numero, 20);
+  const zipCode = textoPagamento(endereco.cep, 12).replace(/[^0-9]/g, '');
+
+  const items = Array.isArray(order?.items)
+    ? order.items.slice(0, 50).map((item, indice) => {
+        const quantity = Math.max(1, Math.min(99, Math.trunc(Number(item?.quantity) || 1)));
+        const unitPrice = normalizarValor(item?.unit_price, 0.01);
+        const title = textoPagamento(item?.title, 120);
+        if (!unitPrice || !title) return null;
+
+        return {
+          id: textoPagamento(String(item?.id ?? indice), 50),
+          title,
+          description: title,
+          category_id: 'food',
+          quantity,
+          currency_id: 'BRL',
+          unit_price: unitPrice,
+          type: 'physical'
+        };
+      }).filter(Boolean)
+    : [];
+
+  const payer = {
+    ...(firstName ? { first_name: firstName } : {}),
+    ...(lastName ? { last_name: lastName } : {}),
+    ...(streetName || zipCode ? {
+      address: {
+        ...(zipCode ? { zip_code: zipCode } : {}),
+        ...(streetName ? { street_name: streetName } : {}),
+        ...(streetNumber ? { street_number: streetNumber } : {})
+      }
+    } : {})
+  };
+
+  return {
+    ...(req.ip ? { ip_address: req.ip.replace(/^::ffff:/, '') } : {}),
+    ...(items.length ? { items } : {}),
+    ...(Object.keys(payer).length ? { payer } : {})
+  };
 }
 
 const ADMIN_DEFAULT = {
@@ -319,9 +373,14 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     installments,
     payment_method_id,
     issuer_id,
-    payer
+    payer,
+    device_id,
+    order
   } = req.body || {};
   const valor = normalizarValor(transaction_amount, 1);
+  const documentoBruto = payer?.identification?.number;
+  const documento = textoPagamento(documentoBruto == null ? '' : String(documentoBruto), 20).replace(/\D/g, '');
+  const deviceId = textoPagamento(device_id, 255);
 
   if (!process.env.MP_ACCESS_TOKEN) {
     return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
@@ -331,8 +390,18 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     return res.status(400).json({ erro: 'Dados do pagamento incompletos.' });
   }
 
+  if (![11, 14].includes(documento.length)) {
+    return res.status(400).json({ erro: 'Informe um CPF válido para processar o pagamento.' });
+  }
+
+  if (!deviceId) {
+    return res.status(400).json({ erro: 'Não foi possível validar a segurança do dispositivo. Atualize a página e tente novamente.' });
+  }
+
   try {
     const payment = new Payment(client);
+    const dadosAntifraude = montarDadosAntifraude(req, order);
+    const nomeComprador = dadosAntifraude.payer || {};
     const resultado = await payment.create({
       body: {
         transaction_amount: valor,
@@ -343,11 +412,33 @@ app.post('/api/pagamento-cartao', async (req, res) => {
         ...(issuer_id ? { issuer_id } : {}),
         payer: {
           email: payer.email,
-          ...(payer.identification ? { identification: payer.identification } : {})
-        }
+          identification: {
+            type: textoPagamento(payer.identification.type, 10) || (documento.length === 11 ? 'CPF' : 'CNPJ'),
+            number: documento
+          },
+          ...(nomeComprador.first_name ? { first_name: nomeComprador.first_name } : {}),
+          ...(nomeComprador.last_name ? { last_name: nomeComprador.last_name } : {}),
+          ...(nomeComprador.address ? { address: nomeComprador.address } : {})
+        },
+        ...(Object.keys(dadosAntifraude).length ? { additional_info: dadosAntifraude } : {})
       },
-      requestOptions: { idempotencyKey: crypto.randomUUID() }
+      requestOptions: {
+        idempotencyKey: crypto.randomUUID(),
+        meliSessionId: deviceId
+      }
     });
+
+    if (resultado.status !== 'approved') {
+      console.warn('Pagamento não aprovado pelo Mercado Pago', {
+        id: resultado.id,
+        status: resultado.status,
+        detalhe: resultado.status_detail,
+        deviceIdEnviado: true,
+        cpfEnviado: true,
+        itensEnviados: dadosAntifraude.items?.length || 0,
+        modoTeste: payer.email.trim().toLowerCase() === 'test@testuser.com'
+      });
+    }
 
     return res.json({ id: resultado.id, status: resultado.status, detalhe: resultado.status_detail });
   } catch (erro) {
