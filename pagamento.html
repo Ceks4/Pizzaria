@@ -51,6 +51,46 @@
     color: #7a6a60;
   }
   .status-pix.pago { color: #2a7a3d; }
+  .metodos-pagamento { display: grid; gap: 12px; text-align: left; }
+  .metodo-pagamento {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #fffaf3;
+    border: 1px solid #e0d8cc;
+    color: #fff;
+    border-radius: 8px;
+    padding: 14px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  }
+  .metodo-pagamento:hover,
+  .metodo-pagamento:focus-visible {
+    background: #fff;
+    border-color: #a0522d;
+    transform: translateY(-2px);
+  }
+  .metodo-pagamento:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .metodo-icone {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 44px;
+    border-radius: 8px;
+    background: #5c1f1f;
+    color: #fff;
+  }
+  .metodo-icone.pix { background: #008f83; }
+  .metodo-icone svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .pix-marca { font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em; }
+  .metodo-texto { display: grid; gap: 3px; color: #3a2a24; }
+  .metodo-titulo { font-size: 0.95rem; font-weight: 700; }
+  .metodo-detalhe { color: #7a6a60; font-size: 0.78rem; }
+  .metodo-seta { margin-left: auto; color: #a0522d; font-size: 1.25rem; }
+  .nota-seguranca { color: #7a6a60; font-size: 0.78rem; margin-top: 2px; text-align: center; }
 </style>
 </head>
 <body>
@@ -71,12 +111,30 @@
 <main>
   <div class="card">
     <h2>PAGAMENTO</h2>
-    <p class="subtitulo">Pague com Pix para confirmar seu pedido</p>
+    <p class="subtitulo">Escolha uma forma de pagamento para confirmar seu pedido</p>
  
     <div class="valor-total" id="valorTotal">R$ 0,00</div>
  
-    <div id="areaInicial">
-      <button class="btn-principal" id="btnGerarPix">GERAR QR CODE PIX</button>
+    <div id="areaInicial" class="metodos-pagamento">
+      <button class="metodo-pagamento" id="btnGerarPix" type="button">
+        <span class="metodo-icone pix" aria-hidden="true"><span class="pix-marca">PIX</span></span>
+        <span class="metodo-texto">
+          <span class="metodo-titulo">Pagar com Pix</span>
+          <span class="metodo-detalhe">Aprovação rápida pelo QR Code</span>
+        </span>
+        <span class="metodo-seta" aria-hidden="true">&#8250;</span>
+      </button>
+      <button class="metodo-pagamento" id="btnPagarCartao" type="button">
+        <span class="metodo-icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"></rect><path d="M2.5 9.5h19M6 14h4"></path></svg>
+        </span>
+        <span class="metodo-texto">
+          <span class="metodo-titulo">Pagar com cartão</span>
+          <span class="metodo-detalhe">Crédito ou débito pelo Mercado Pago</span>
+        </span>
+        <span class="metodo-seta" aria-hidden="true">&#8250;</span>
+      </button>
+      <p class="nota-seguranca">Pagamento protegido. Os dados do cartão não ficam nesta página.</p>
       <p class="mensagem" id="mensagem"></p>
     </div>
  
@@ -93,10 +151,29 @@
   const URL_BACKEND = 'https://pizzaria-asml.onrender.com';
  
   // ---- Carrega carrinho e endereço salvos ----
-  const carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+  const chaveCarrinho = 'carrinhoPizzaria';
+  let carrinho = [];
+
+  try {
+    const carrinhoSalvo = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
+    carrinho = Array.isArray(carrinhoSalvo) ? carrinhoSalvo : [];
+
+    if (carrinho.length === 0) {
+      const carrinhoLegacy = JSON.parse(localStorage.getItem('carrinho') || '[]');
+      if (Array.isArray(carrinhoLegacy) && carrinhoLegacy.length > 0) {
+        carrinho = carrinhoLegacy;
+        localStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+        localStorage.removeItem('carrinho');
+      }
+    }
+  } catch (erro) {
+    localStorage.removeItem(chaveCarrinho);
+    localStorage.removeItem('carrinho');
+  }
+
   const endereco = JSON.parse(localStorage.getItem('enderecoEntrega')) || {};
   const usuario = JSON.parse(localStorage.getItem('usuarioLogado')) || {};
- 
+
   let total = 0;
   carrinho.forEach(item => total += item.preco * item.quantidade);
   document.getElementById('valorTotal').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
@@ -106,9 +183,58 @@
   const areaInicial = document.getElementById('areaInicial');
   const areaQrCode = document.getElementById('areaQrCode');
   const statusPix = document.getElementById('statusPix');
+  const btnPagarCartao = document.getElementById('btnPagarCartao');
  
   let pagamentoId = null;
   let intervaloChecagem = null;
+
+  async function lerResposta(resposta) {
+    const tipo = resposta.headers.get('content-type') || '';
+    if (!tipo.includes('application/json')) {
+      throw new Error('O servidor de pagamentos ainda não foi atualizado. Publique o backend no Render.');
+    }
+
+    return resposta.json();
+  }
+
+  btnPagarCartao.addEventListener('click', async () => {
+    if (carrinho.length === 0) {
+      mensagem.textContent = 'Seu carrinho está vazio.';
+      mensagem.className = 'mensagem erro';
+      return;
+    }
+
+    btnPagarCartao.disabled = true;
+    btnGerarPix.disabled = true;
+    btnPagarCartao.querySelector('.metodo-titulo').textContent = 'Abrindo checkout...';
+
+    try {
+      const urlRetorno = new URL('finalizar.html?pagamento=sucesso', window.location.href).href;
+      const resposta = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          valor: total,
+          descricao: 'Pedido LosPizzanitos',
+          email: usuario.email || '',
+          itens: carrinho,
+          urlSucesso: urlRetorno,
+          urlCancelado: new URL('pagamento.html', window.location.href).href,
+          urlPendente: new URL('finalizar.html?pagamento=pendente', window.location.href).href
+        })
+      });
+      const dados = await lerResposta(resposta);
+
+      if (!resposta.ok || !dados.url) throw new Error(dados.erro || 'Não foi possível iniciar o checkout.');
+      window.location.href = dados.url;
+    } catch (erro) {
+      mensagem.textContent = erro.message || 'Não foi possível conectar ao servidor.';
+      mensagem.className = 'mensagem erro';
+      btnPagarCartao.disabled = false;
+      btnGerarPix.disabled = false;
+      btnPagarCartao.querySelector('.metodo-titulo').textContent = 'Pagar com cartão';
+    }
+  });
  
   btnGerarPix.addEventListener('click', async () => {
     if (carrinho.length === 0) {
@@ -118,7 +244,7 @@
     }
  
     btnGerarPix.disabled = true;
-    btnGerarPix.textContent = 'GERANDO...';
+    btnGerarPix.querySelector('.metodo-titulo').textContent = 'Gerando Pix...';
  
     try {
       const resposta = await fetch(`${URL_BACKEND}/api/pagamento-pix`, {
@@ -140,7 +266,7 @@
         mensagem.textContent = dados.erro;
         mensagem.className = 'mensagem erro';
         btnGerarPix.disabled = false;
-        btnGerarPix.textContent = 'GERAR QR CODE PIX';
+        btnGerarPix.querySelector('.metodo-titulo').textContent = 'Pagar com Pix';
         return;
       }
  
@@ -158,7 +284,7 @@
       mensagem.textContent = 'Não foi possível conectar ao servidor.';
       mensagem.className = 'mensagem erro';
       btnGerarPix.disabled = false;
-      btnGerarPix.textContent = 'GERAR QR CODE PIX';
+      btnGerarPix.querySelector('.metodo-titulo').textContent = 'Pagar com Pix';
     }
   });
  
@@ -175,9 +301,10 @@
         statusPix.className = 'status-pix pago';
  
         await salvarPedido();
- 
+
+        localStorage.removeItem(chaveCarrinho);
         localStorage.removeItem('carrinho');
- 
+
         setTimeout(() => {
           window.location.href = 'status.html';
         }, 2500);
@@ -200,7 +327,8 @@
           nome: usuario.nome || 'Cliente',
           itens: carrinho,
           total: total,
-          endereco: endereco
+          endereco: endereco,
+          pagamento_id: pagamentoId
         })
       });
     } catch (erro) {

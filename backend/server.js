@@ -3,7 +3,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const pool = require('./db');
-const { MercadoPagoConfig, Payment } = require('mercadopago');
+const { MercadoPagoConfig, Payment, PaymentRefund, Preference } = require('mercadopago');
  
 const app = express();
 app.use(express.json());
@@ -20,6 +20,7 @@ const adminTokens = new Set();
 async function garantirColunasPedidos() {
   try {
     await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT`);
+    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pagamento_id TEXT`);
   } catch (erro) {
     console.error('Erro ao garantir coluna motivo_cancelamento:', erro);
   }
@@ -37,6 +38,15 @@ function parseJsonField(valor) {
     }
   }
   return valor;
+}
+
+async function reembolsarPagamento(pagamentoId) {
+  if (!pagamentoId) {
+    throw new Error('Este pedido não possui um pagamento vinculado para estorno.');
+  }
+
+  const refund = new PaymentRefund(client);
+  return refund.total({ payment_id: pagamentoId });
 }
 
 function autenticarAdmin(req, res, next) {
@@ -202,6 +212,19 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
       return res.status(400).json({ erro: 'Informe o motivo do cancelamento.' });
     }
 
+    if (status === 'cancelado') {
+      const pedido = await pool.query(
+        `SELECT pagamento_id FROM pedidos WHERE id = $1 AND status <> 'cancelado'`,
+        [req.params.id]
+      );
+
+      if (pedido.rows.length === 0) {
+        return res.status(404).json({ erro: 'Pedido não encontrado.' });
+      }
+
+      await reembolsarPagamento(pedido.rows[0].pagamento_id);
+    }
+
     const resultado = await pool.query(
       status === 'cancelado'
         ? `UPDATE pedidos
@@ -219,10 +242,10 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
       return res.status(404).json({ erro: 'Pedido não encontrado.' });
     }
 
-    return res.json({ sucesso: true });
+    return res.json({ sucesso: true, reembolso: status === 'cancelado' });
   } catch (erro) {
     console.error(erro);
-    return res.status(500).json({ erro: 'Não foi possível atualizar o status.' });
+    return res.status(502).json({ erro: erro.message || 'Não foi possível atualizar o status.' });
   }
 });
 
@@ -251,6 +274,48 @@ app.post('/api/pagamento-pix', async (req, res) => {
     res.status(500).json({ erro: 'Erro ao gerar Pix' });
   }
 });
+
+// Cria um checkout seguro para pagamento com cartão (Mercado Pago)
+app.post('/api/pagamento-cartao', async (req, res) => {
+  const { valor, descricao, email, itens, urlSucesso, urlCancelado, urlPendente } = req.body || {};
+
+  if (!Number.isFinite(Number(valor)) || Number(valor) <= 0 || !email || !urlSucesso) {
+    return res.status(400).json({ erro: 'Dados do pagamento incompletos.' });
+  }
+
+  try {
+    const preference = new Preference(client);
+    const resultado = await preference.create({
+      body: {
+        items: [{
+          id: 'pedido-pizzaria',
+          title: descricao || 'Pedido LosPizzanitos',
+          quantity: 1,
+          unit_price: Number(valor),
+          currency_id: 'BRL'
+        }],
+        payer: { email },
+        payment_methods: {
+          excluded_payment_types: [],
+          excluded_payment_methods: [],
+          installments: 12
+        },
+        back_urls: {
+          success: urlSucesso,
+          failure: urlCancelado || urlSucesso,
+          pending: urlPendente || urlSucesso
+        },
+        auto_return: 'approved',
+        external_reference: JSON.stringify({ itens: Array.isArray(itens) ? itens : [] })
+      }
+    });
+
+    return res.json({ url: resultado.init_point });
+  } catch (erro) {
+    console.error(erro);
+    return res.status(500).json({ erro: 'Erro ao iniciar pagamento com cartão.' });
+  }
+});
  
 // Rota para checar status do pagamento
 app.get('/api/pagamento-status/:id', async (req, res) => {
@@ -266,16 +331,17 @@ app.get('/api/pagamento-status/:id', async (req, res) => {
  
 // Criar pedido (chamado depois que o Pix é aprovado)
 app.post('/api/pedidos', async (req, res) => {
-  const { email, nome, itens, total, endereco } = req.body;
+  const { email, nome, itens, total, endereco, pagamento_id } = req.body;
  
   try {
-    await pool.query(
-      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), total]
+    const resultado = await pool.query(
+      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total, pagamento_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), total, pagamento_id || null]
     );
  
-    res.json({ sucesso: true });
+    res.json({ sucesso: true, pedidoId: resultado.rows[0].id });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: 'Não foi possível salvar o pedido.' });
@@ -320,6 +386,18 @@ app.patch('/api/pedidos/cliente/:id/cancelar', async (req, res) => {
   }
  
   try {
+    const pedido = await pool.query(
+      `SELECT pagamento_id FROM pedidos
+       WHERE id = $1 AND cliente_email = $2 AND status = 'em_preparacao'`,
+      [id, email]
+    );
+
+    if (pedido.rows.length === 0) {
+      return res.status(400).json({ erro: 'Pedido não encontrado ou não pode mais ser cancelado.' });
+    }
+
+    await reembolsarPagamento(pedido.rows[0].pagamento_id);
+
     const resultado = await pool.query(
       `UPDATE pedidos
        SET status = 'cancelado', motivo_cancelamento = $3
@@ -327,15 +405,15 @@ app.patch('/api/pedidos/cliente/:id/cancelar', async (req, res) => {
        RETURNING id, motivo_cancelamento`,
       [id, email, motivoTexto]
     );
- 
+
     if (resultado.rows.length === 0) {
-      return res.status(400).json({ erro: 'Pedido não encontrado ou não pode mais ser cancelado.' });
+      return res.status(409).json({ erro: 'O pedido mudou de status enquanto o estorno era processado.' });
     }
  
-    res.json({ sucesso: true, motivo_cancelamento: resultado.rows[0].motivo_cancelamento });
+    res.json({ sucesso: true, reembolso: true, motivo_cancelamento: resultado.rows[0].motivo_cancelamento });
   } catch (erro) {
     console.error(erro);
-    res.status(500).json({ erro: 'Não foi possível cancelar o pedido.' });
+    res.status(502).json({ erro: erro.message || 'Não foi possível cancelar o pedido.' });
   }
 });
  

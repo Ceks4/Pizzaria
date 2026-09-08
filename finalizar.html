@@ -101,7 +101,7 @@
       </section>
 
       <div class="pagamento-info">
-        O pagamento será feito com segurança pelo checkout PIX do Mercado Pago.
+        Escolha Pix ou cartão de crédito no checkout seguro do Mercado Pago.
       </div>
 
       <form id="formEndereco">
@@ -145,7 +145,7 @@
           </div>
         </div>
 
-        <button type="submit" class="btn-principal" id="btnFinalizar">IR PARA PAGAMENTO PIX</button>
+        <button type="submit" class="btn-principal" id="btnFinalizar">IR PARA PAGAMENTO</button>
         <p class="mensagem" id="mensagem" role="status" aria-live="polite"></p>
       </form>
     </div>
@@ -272,7 +272,15 @@
       mensagem.insertAdjacentElement('afterend', linkStatus);
     }
 
-    if (new URLSearchParams(window.location.search).get('pagamento') === 'sucesso') {
+    const parametrosRetorno = new URLSearchParams(window.location.search);
+    const statusPagamento = parametrosRetorno.get('pagamento');
+    if (statusPagamento === 'sucesso') {
+      const pagamentoId = parametrosRetorno.get('payment_id') || parametrosRetorno.get('collection_id');
+      const pedidoPendente = JSON.parse(localStorage.getItem(chavePedidoPendente) || 'null');
+      if (pagamentoId && pedidoPendente) {
+        pedidoPendente.pagamento_id = pagamentoId;
+        localStorage.setItem(chavePedidoPendente, JSON.stringify(pedidoPendente));
+      }
       btnFinalizar.disabled = true;
       mensagem.textContent = 'Registrando seu pedido...';
       registrarPedidoPendente().catch(() => {
@@ -317,7 +325,7 @@
         mensagem.textContent = erro.message || 'Não foi possível iniciar o pagamento. Tente novamente.';
         mensagem.className = 'mensagem erro';
         btnFinalizar.disabled = false;
-        btnFinalizar.textContent = 'IR PARA PAGAMENTO PIX';
+        btnFinalizar.textContent = 'IR PARA PAGAMENTO';
       }
     });
   </script>
