@@ -62,7 +62,7 @@
         <div class="item-conteudo">
           <div class="item-topo">
             <h4>Mussarela</h4>
-            <span class="preco">R$ 00,01</span>
+            <span class="preco">R$ 50,00</span>
           </div>
           <p>Molho de tomate, mussarela, orégano e azeitonas.</p>
         </div>
@@ -432,7 +432,15 @@
   });
 
   const chaveCarrinho = 'carrinhoPizzaria';
-  let carrinho = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
+  let carrinho = [];
+  try {
+    const carrinhoSalvo = localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]';
+    const itensSalvos = JSON.parse(carrinhoSalvo);
+    carrinho = Array.isArray(itensSalvos) ? itensSalvos : [];
+  } catch (erro) {
+    localStorage.removeItem(chaveCarrinho);
+    sessionStorage.removeItem(chaveCarrinho);
+  }
   const painelCarrinho = document.getElementById('carrinhoPainel');
   const overlayCarrinho = document.getElementById('carrinhoOverlay');
   const itensCarrinho = document.getElementById('carrinhoItens');
@@ -446,7 +454,9 @@
   });
 
   function salvarCarrinho() {
-    localStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+    const carrinhoJson = JSON.stringify(carrinho);
+    localStorage.setItem(chaveCarrinho, carrinhoJson);
+    sessionStorage.setItem(chaveCarrinho, carrinhoJson);
   }
 
   function atualizarCarrinho() {
@@ -519,6 +529,7 @@
   overlayCarrinho.addEventListener('click', () => alternarCarrinho(false));
   finalizarCompra.addEventListener('click', () => {
     if (carrinho.length > 0) {
+      salvarCarrinho();
       window.location.href = 'finalizar.html';
     }
   });
