@@ -234,6 +234,11 @@
       },
       callbacks: {
         onReady: () => {},
+        onError: erro => {
+          console.error('Erro no formulário de cartão:', erro);
+          mensagem.textContent = 'Não foi possível carregar o formulário do cartão.';
+          mensagem.className = 'mensagem erro';
+        },
         onSubmit: async dadosCartao => {
           const respostaPagamento = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
             method: 'POST',
