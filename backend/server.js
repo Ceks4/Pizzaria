@@ -394,10 +394,6 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     return res.status(400).json({ erro: 'Informe um CPF válido para processar o pagamento.' });
   }
 
-  if (!deviceId) {
-    return res.status(400).json({ erro: 'Não foi possível validar a segurança do dispositivo. Atualize a página e tente novamente.' });
-  }
-
   try {
     const payment = new Payment(client);
     const dadosAntifraude = montarDadosAntifraude(req, order);
@@ -424,7 +420,7 @@ app.post('/api/pagamento-cartao', async (req, res) => {
       },
       requestOptions: {
         idempotencyKey: crypto.randomUUID(),
-        meliSessionId: deviceId
+        ...(deviceId ? { meliSessionId: deviceId } : {})
       }
     });
 
@@ -433,7 +429,7 @@ app.post('/api/pagamento-cartao', async (req, res) => {
         id: resultado.id,
         status: resultado.status,
         detalhe: resultado.status_detail,
-        deviceIdEnviado: true,
+        deviceIdEnviado: Boolean(deviceId),
         cpfEnviado: true,
         itensEnviados: dadosAntifraude.items?.length || 0,
         modoTeste: payer.email.trim().toLowerCase() === 'test@testuser.com'
