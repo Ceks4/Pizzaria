@@ -240,27 +240,33 @@
           mensagem.className = 'mensagem erro';
         },
         onSubmit: async dadosCartao => {
-          const respostaPagamento = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...dadosCartao,
-              description: 'Pedido LosPizzanitos'
-            })
-          });
-          const dados = await lerResposta(respostaPagamento);
-          if (!respostaPagamento.ok) throw new Error(dados.erro || 'Não foi possível processar o cartão.');
+          try {
+            const respostaPagamento = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...dadosCartao,
+                description: 'Pedido LosPizzanitos'
+              })
+            });
+            const dados = await lerResposta(respostaPagamento);
+            if (!respostaPagamento.ok) throw new Error(dados.erro || 'Não foi possível processar o cartão.');
 
-          if (dados.status === 'approved') {
-            pagamentoId = dados.id;
-            await salvarPedido(pagamentoId);
-            localStorage.removeItem(chaveCarrinho);
-            localStorage.removeItem('carrinho');
-            window.location.href = 'status.html';
-            return;
+            if (dados.status === 'approved') {
+              pagamentoId = dados.id;
+              await salvarPedido(pagamentoId);
+              localStorage.removeItem(chaveCarrinho);
+              localStorage.removeItem('carrinho');
+              window.location.href = 'status.html';
+              return;
+            }
+
+            throw new Error(dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.');
+          } catch (erro) {
+            mensagem.textContent = erro.message || 'Não foi possível processar o cartão.';
+            mensagem.className = 'mensagem erro';
+            throw erro;
           }
-
-          throw new Error(dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.');
         }
       }
     });

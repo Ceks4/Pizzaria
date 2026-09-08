@@ -315,7 +315,10 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     return res.json({ id: resultado.id, status: resultado.status, detalhe: resultado.status_detail });
   } catch (erro) {
     console.error(erro);
-    return res.status(500).json({ erro: 'Erro ao iniciar pagamento com cartão.' });
+    const detalhe = erro?.cause?.[0]?.description || erro?.message;
+    return res.status(502).json({
+      erro: detalhe || 'Não foi possível processar o cartão. Confira os dados e tente novamente.'
+    });
   }
 });
  
