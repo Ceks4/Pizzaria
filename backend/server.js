@@ -378,6 +378,9 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     order
   } = req.body || {};
   const valor = normalizarValor(transaction_amount, 1);
+  const documentoBruto = payer?.identification?.number;
+  const documento = textoPagamento(documentoBruto == null ? '' : String(documentoBruto), 20).replace(/\D/g, '');
+  const deviceId = textoPagamento(device_id, 255);
 
   if (!process.env.MP_ACCESS_TOKEN) {
     return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
@@ -385,6 +388,14 @@ app.post('/api/pagamento-cartao', async (req, res) => {
 
   if (valor === null || !token || !payment_method_id || !payer?.email) {
     return res.status(400).json({ erro: 'Dados do pagamento incompletos.' });
+  }
+
+  if (![11, 14].includes(documento.length)) {
+    return res.status(400).json({ erro: 'Informe um CPF válido para processar o pagamento.' });
+  }
+
+  if (!deviceId) {
+    return res.status(400).json({ erro: 'Não foi possível validar a segurança do dispositivo. Atualize a página e tente novamente.' });
   }
 
   try {
@@ -401,7 +412,10 @@ app.post('/api/pagamento-cartao', async (req, res) => {
         ...(issuer_id ? { issuer_id } : {}),
         payer: {
           email: payer.email,
-          ...(payer.identification ? { identification: payer.identification } : {}),
+          identification: {
+            type: textoPagamento(payer.identification.type, 10) || (documento.length === 11 ? 'CPF' : 'CNPJ'),
+            number: documento
+          },
           ...(nomeComprador.first_name ? { first_name: nomeComprador.first_name } : {}),
           ...(nomeComprador.last_name ? { last_name: nomeComprador.last_name } : {}),
           ...(nomeComprador.address ? { address: nomeComprador.address } : {})
@@ -410,7 +424,7 @@ app.post('/api/pagamento-cartao', async (req, res) => {
       },
       requestOptions: {
         idempotencyKey: crypto.randomUUID(),
-        ...(textoPagamento(device_id, 255) ? { meliSessionId: textoPagamento(device_id, 255) } : {})
+        meliSessionId: deviceId
       }
     });
 
@@ -419,8 +433,10 @@ app.post('/api/pagamento-cartao', async (req, res) => {
         id: resultado.id,
         status: resultado.status,
         detalhe: resultado.status_detail,
-        deviceIdEnviado: Boolean(textoPagamento(device_id, 255)),
-        itensEnviados: dadosAntifraude.items?.length || 0
+        deviceIdEnviado: true,
+        cpfEnviado: true,
+        itensEnviados: dadosAntifraude.items?.length || 0,
+        modoTeste: payer.email.trim().toLowerCase() === 'test@testuser.com'
       });
     }
 
