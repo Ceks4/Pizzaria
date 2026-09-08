@@ -216,6 +216,21 @@
     return Number.isFinite(valor) && valor >= minimo && Number(valor.toFixed(2)) === valor;
   }
 
+  function mensagemRecusaCartao(detalhe) {
+    const mensagens = {
+      cc_rejected_high_risk: 'Pagamento recusado por segurança pelo Mercado Pago. Não repita a tentativa agora; use outro meio de pagamento ou entre em contato com o Mercado Pago.',
+      cc_rejected_bad_filled_card_number: 'Confira o número do cartão.',
+      cc_rejected_bad_filled_date: 'Confira a validade do cartão.',
+      cc_rejected_bad_filled_security_code: 'Confira o código de segurança do cartão.',
+      cc_rejected_insufficient_amount: 'O cartão não possui limite ou saldo suficiente.',
+      cc_rejected_call_for_authorize: 'O banco precisa autorizar essa compra. Entre em contato com o emissor do cartão.',
+      cc_rejected_card_disabled: 'O cartão está bloqueado ou desativado. Entre em contato com o banco.',
+      cc_rejected_duplicated_payment: 'Uma cobrança igual já foi enviada. Aguarde e confira antes de tentar novamente.'
+    };
+
+    return mensagens[detalhe] || 'O pagamento não foi aprovado. Tente outro cartão ou pague com Pix.';
+  }
+
   async function inicializarCartao() {
     if (controladorCartao) return;
 
@@ -253,7 +268,20 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 ...dadosCartao,
-                description: 'Pedido LosPizzanitos'
+                description: 'Pedido LosPizzanitos',
+                device_id: typeof window.MP_DEVICE_SESSION_ID === 'string'
+                  ? window.MP_DEVICE_SESSION_ID
+                  : '',
+                order: {
+                  buyer_name: usuario.nome || '',
+                  items: carrinho.map(item => ({
+                    id: item.id,
+                    title: item.nome,
+                    quantity: item.quantidade,
+                    unit_price: item.preco
+                  })),
+                  address: endereco
+                }
               })
             });
             const dados = await lerResposta(respostaPagamento);
@@ -270,7 +298,7 @@
               return;
             }
 
-            throw new Error(dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.');
+            throw new Error(mensagemRecusaCartao(dados.detalhe));
           } catch (erro) {
             mensagem.textContent = erro.message || 'Não foi possível processar o cartão.';
             mensagem.className = 'mensagem erro';
