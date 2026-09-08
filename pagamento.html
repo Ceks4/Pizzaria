@@ -6,7 +6,6 @@
 <title>Pagamento — LosPizzanitos</title>
 <link rel="stylesheet" href="auth.css">
 <script src="https://sdk.mercadopago.com/js/v2"></script>
-<script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
 <style>
   .card { max-width: 460px; text-align: center; }
   .valor-total {
@@ -166,7 +165,9 @@
     </div>
   </div>
 </main>
- 
+
+<input type="hidden" id="deviceId" value="">
+<script src="https://www.mercadopago.com/v2/security.js" view="checkout" output="deviceId"></script>
 <script>
   const URL_BACKEND = 'https://pizzaria-asml.onrender.com';
   const VALOR_MINIMO_CARTAO = 1;
@@ -234,9 +235,13 @@
 
   async function obterDeviceId() {
     for (let tentativa = 0; tentativa < 20; tentativa += 1) {
-      if (typeof window.MP_DEVICE_SESSION_ID === 'string' && window.MP_DEVICE_SESSION_ID) {
-        return window.MP_DEVICE_SESSION_ID;
-      }
+      const candidatos = [
+        window.MP_DEVICE_SESSION_ID,
+        typeof window.deviceId === 'string' ? window.deviceId : '',
+        document.getElementById('deviceId')?.value
+      ];
+      const deviceId = candidatos.find(valor => typeof valor === 'string' && valor.trim());
+      if (deviceId) return deviceId.trim();
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     return '';
@@ -280,10 +285,6 @@
             }
 
             const deviceId = await obterDeviceId();
-            if (!deviceId) {
-              throw new Error('Não foi possível validar a segurança do dispositivo. Atualize a página e desative bloqueadores de conteúdo para tentar novamente.');
-            }
-
             const emailPagamento = String(dadosCartao?.payer?.email || '').trim().toLowerCase();
             const nomeComprador = emailPagamento === 'test@testuser.com'
               ? 'APRO'
