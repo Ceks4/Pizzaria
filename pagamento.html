@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pagamento — LosPizzanitos</title>
 <link rel="stylesheet" href="auth.css">
+<script src="https://sdk.mercadopago.com/js/v2"></script>
 <style>
   .card { max-width: 460px; text-align: center; }
   .valor-total {
@@ -91,6 +92,18 @@
   .metodo-detalhe { color: #7a6a60; font-size: 0.78rem; }
   .metodo-seta { margin-left: auto; color: #a0522d; font-size: 1.25rem; }
   .nota-seguranca { color: #7a6a60; font-size: 0.78rem; margin-top: 2px; text-align: center; }
+  #areaCartao { display: none; text-align: left; }
+  #cardPaymentBrick_container { margin-top: 12px; }
+  .btn-voltar-metodos {
+    margin-top: 12px;
+    border: 0;
+    background: transparent;
+    color: #a0522d;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -144,6 +157,11 @@
       <button class="btn-copiar" id="btnCopiar">COPIAR CÓDIGO PIX</button>
       <p class="status-pix" id="statusPix">Aguardando pagamento...</p>
     </div>
+
+    <div id="areaCartao">
+      <div id="cardPaymentBrick_container"></div>
+      <button class="btn-voltar-metodos" id="btnVoltarMetodos" type="button">&#8592; Escolher outra forma de pagamento</button>
+    </div>
   </div>
 </main>
  
@@ -184,9 +202,65 @@
   const areaQrCode = document.getElementById('areaQrCode');
   const statusPix = document.getElementById('statusPix');
   const btnPagarCartao = document.getElementById('btnPagarCartao');
+  const areaCartao = document.getElementById('areaCartao');
+  const btnVoltarMetodos = document.getElementById('btnVoltarMetodos');
  
   let pagamentoId = null;
   let intervaloChecagem = null;
+  let cartaoInicializado = false;
+
+  async function inicializarCartao() {
+    if (cartaoInicializado) return;
+
+    const resposta = await fetch(`${URL_BACKEND}/api/pagamento-config`);
+    const config = await lerResposta(resposta);
+    if (!resposta.ok || !config.publicKey) {
+      throw new Error('O cartão ainda não está configurado no servidor. Adicione MP_PUBLIC_KEY no Render.');
+    }
+
+    const mp = new MercadoPago(config.publicKey, { locale: 'pt-BR' });
+    const bricksBuilder = mp.bricks();
+    await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
+      initialization: {
+        amount: total,
+        payer: { email: usuario.email || '' }
+      },
+      customization: {
+        paymentMethods: {
+          creditCard: 'all',
+          debitCard: 'all'
+        },
+        visual: { style: { theme: 'default' } }
+      },
+      callbacks: {
+        onReady: () => {},
+        onSubmit: async dadosCartao => {
+          const respostaPagamento = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...dadosCartao,
+              description: 'Pedido LosPizzanitos'
+            })
+          });
+          const dados = await lerResposta(respostaPagamento);
+          if (!respostaPagamento.ok) throw new Error(dados.erro || 'Não foi possível processar o cartão.');
+
+          if (dados.status === 'approved') {
+            pagamentoId = dados.id;
+            await salvarPedido(pagamentoId);
+            localStorage.removeItem(chaveCarrinho);
+            localStorage.removeItem('carrinho');
+            window.location.href = 'status.html';
+            return;
+          }
+
+          throw new Error(dados.detalhe || 'O pagamento não foi aprovado. Tente outro cartão.');
+        }
+      }
+    });
+    cartaoInicializado = true;
+  }
 
   async function lerResposta(resposta) {
     const tipo = resposta.headers.get('content-type') || '';
@@ -206,34 +280,26 @@
 
     btnPagarCartao.disabled = true;
     btnGerarPix.disabled = true;
-    btnPagarCartao.querySelector('.metodo-titulo').textContent = 'Abrindo checkout...';
+    areaInicial.style.display = 'none';
+    areaCartao.style.display = 'block';
 
     try {
-      const urlRetorno = new URL('finalizar.html?pagamento=sucesso', window.location.href).href;
-      const resposta = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          valor: total,
-          descricao: 'Pedido LosPizzanitos',
-          email: usuario.email || '',
-          itens: carrinho,
-          urlSucesso: urlRetorno,
-          urlCancelado: new URL('pagamento.html', window.location.href).href,
-          urlPendente: new URL('finalizar.html?pagamento=pendente', window.location.href).href
-        })
-      });
-      const dados = await lerResposta(resposta);
-
-      if (!resposta.ok || !dados.url) throw new Error(dados.erro || 'Não foi possível iniciar o checkout.');
-      window.location.href = dados.url;
+      await inicializarCartao();
     } catch (erro) {
       mensagem.textContent = erro.message || 'Não foi possível conectar ao servidor.';
       mensagem.className = 'mensagem erro';
       btnPagarCartao.disabled = false;
       btnGerarPix.disabled = false;
-      btnPagarCartao.querySelector('.metodo-titulo').textContent = 'Pagar com cartão';
+      areaCartao.style.display = 'none';
+      areaInicial.style.display = 'grid';
     }
+  });
+
+  btnVoltarMetodos.addEventListener('click', () => {
+    areaCartao.style.display = 'none';
+    areaInicial.style.display = 'grid';
+    btnPagarCartao.disabled = false;
+    btnGerarPix.disabled = false;
   });
  
   btnGerarPix.addEventListener('click', async () => {
@@ -317,7 +383,7 @@
     }
   }
  
-  async function salvarPedido() {
+  async function salvarPedido(pagamentoIdInformado = pagamentoId) {
     try {
       await fetch(`${URL_BACKEND}/api/pedidos`, {
         method: 'POST',
@@ -328,7 +394,7 @@
           itens: carrinho,
           total: total,
           endereco: endereco,
-          pagamento_id: pagamentoId
+          pagamento_id: pagamentoIdInformado
         })
       });
     } catch (erro) {

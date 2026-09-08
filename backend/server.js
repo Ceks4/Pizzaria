@@ -3,7 +3,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const pool = require('./db');
-const { MercadoPagoConfig, Payment, PaymentRefund, Preference } = require('mercadopago');
+const { MercadoPagoConfig, Payment, PaymentRefund } = require('mercadopago');
  
 const app = express();
 app.use(express.json());
@@ -275,42 +275,44 @@ app.post('/api/pagamento-pix', async (req, res) => {
   }
 });
 
-// Cria um checkout seguro para pagamento com cartão (Mercado Pago)
-app.post('/api/pagamento-cartao', async (req, res) => {
-  const { valor, descricao, email, itens, urlSucesso, urlCancelado, urlPendente } = req.body || {};
+app.get('/api/pagamento-config', (_req, res) => {
+  res.json({ publicKey: process.env.MP_PUBLIC_KEY || '' });
+});
 
-  if (!Number.isFinite(Number(valor)) || Number(valor) <= 0 || !email || !urlSucesso) {
+// Processa o token do cartão gerado pelo Payment Brick do Mercado Pago
+app.post('/api/pagamento-cartao', async (req, res) => {
+  const {
+    transaction_amount,
+    token,
+    description,
+    installments,
+    payment_method_id,
+    issuer_id,
+    payer
+  } = req.body || {};
+
+  if (!Number.isFinite(Number(transaction_amount)) || Number(transaction_amount) <= 0 || !token || !payment_method_id || !payer?.email) {
     return res.status(400).json({ erro: 'Dados do pagamento incompletos.' });
   }
 
   try {
-    const preference = new Preference(client);
-    const resultado = await preference.create({
+    const payment = new Payment(client);
+    const resultado = await payment.create({
       body: {
-        items: [{
-          id: 'pedido-pizzaria',
-          title: descricao || 'Pedido LosPizzanitos',
-          quantity: 1,
-          unit_price: Number(valor),
-          currency_id: 'BRL'
-        }],
-        payer: { email },
-        payment_methods: {
-          excluded_payment_types: [],
-          excluded_payment_methods: [],
-          installments: 12
-        },
-        back_urls: {
-          success: urlSucesso,
-          failure: urlCancelado || urlSucesso,
-          pending: urlPendente || urlSucesso
-        },
-        auto_return: 'approved',
-        external_reference: JSON.stringify({ itens: Array.isArray(itens) ? itens : [] })
+        transaction_amount: Number(transaction_amount),
+        token,
+        description: description || 'Pedido LosPizzanitos',
+        installments: Number(installments) || 1,
+        payment_method_id,
+        ...(issuer_id ? { issuer_id } : {}),
+        payer: {
+          email: payer.email,
+          ...(payer.identification ? { identification: payer.identification } : {})
+        }
       }
     });
 
-    return res.json({ url: resultado.init_point });
+    return res.json({ id: resultado.id, status: resultado.status, detalhe: resultado.status_detail });
   } catch (erro) {
     console.error(erro);
     return res.status(500).json({ erro: 'Erro ao iniciar pagamento com cartão.' });
