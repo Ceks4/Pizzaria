@@ -88,6 +88,36 @@ const ADMIN_DEFAULT = {
 };
 const adminTokens = new Set();
 
+const FOTOS_PRODUTOS = [
+  ['mussarela', 'Mussarela', 'https://images.pexels.com/photos/30948829/pexels-photo-30948829.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/cheese%20pizza/', 'Damla Selen Demir / Pexels'],
+  ['calabresa', 'Calabresa', 'https://images.pexels.com/photos/31587831/pexels-photo-31587831.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/pepperoni%20pizza/', 'Furkan Alakoc / Pexels'],
+  ['portuguesa', 'Portuguesa', 'https://images.pexels.com/photos/30301974/pexels-photo-30301974.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/pizza/', 'Khezez / Pexels'],
+  ['frango-com-catupiry', 'Frango com Catupiry', 'https://images.pexels.com/photos/6068717/pexels-photo-6068717.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/chicken%20pizza/', 'Dario Garcia / Pexels'],
+  ['quatro-queijos', 'Quatro Queijos', 'https://images.pexels.com/photos/31587843/pexels-photo-31587843.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/cheese%20pizza/', 'Furkan Alakoc / Pexels'],
+  ['marguerita', 'Marguerita', 'https://images.pexels.com/photos/12557605/pexels-photo-12557605.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/margherita%20pizza/', 'Alejandro Aznar / Pexels'],
+  ['napolitana', 'Napolitana', 'https://images.pexels.com/photos/15491639/pexels-photo-15491639.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/neapolitan%20pizza/', 'Vinicios Ramos / Pexels'],
+  ['toscana', 'Toscana', 'https://images.pexels.com/photos/31587851/pexels-photo-31587851.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/sausage%20pizza/', 'Furkan Alakoc / Pexels'],
+  ['bacon', 'Bacon', 'https://images.pexels.com/photos/29829308/pexels-photo-29829308.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/bacon%20pizza/', 'Monty / Pexels'],
+  ['milho-com-bacon', 'Milho com Bacon', 'https://images.pexels.com/photos/36365578/pexels-photo-36365578.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/pizza/', 'Phototora / Pexels'],
+  ['atum', 'Atum', 'https://images.pexels.com/photos/7780261/pexels-photo-7780261.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/pizza/', 'Mikhail Nilov / Pexels'],
+  ['vegetariana', 'Vegetariana', 'https://images.pexels.com/photos/5175556/pexels-photo-5175556.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/vegetable%20pizza/', 'Shameel Mukkath / Pexels'],
+  ['pepperoni', 'Pepperoni', 'https://images.pexels.com/photos/5903315/pexels-photo-5903315.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/pepperoni%20pizza/', 'Roman Odintsov / Pexels'],
+  ['costela-com-barbecue', 'Costela com Barbecue', 'https://images.pexels.com/photos/9353414/pexels-photo-9353414.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/meat%20pizza/', 'PNW Production / Pexels'],
+  ['camarao-ao-catupiry', 'Camarão ao Catupiry', 'https://images.pexels.com/photos/31587842/pexels-photo-31587842.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/seafood%20pizza/', 'Furkan Alakoc / Pexels'],
+  ['parma-com-rucula', 'Parma com Rúcula', 'https://images.pexels.com/photos/37417637/pexels-photo-37417637.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/prosciutto%20pizza/', 'Husien Bisky / Pexels'],
+  ['carne-seca-com-abobora', 'Carne Seca com Abóbora', 'https://images.pexels.com/photos/31450871/pexels-photo-31450871.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/meat%20pizza/', 'Pedro Furtado / Pexels'],
+  ['lombo-com-cheddar', 'Lombo com Cheddar', 'https://images.pexels.com/photos/9394678/pexels-photo-9394678.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/meat%20pizza/', 'Asad Photo Maldives / Pexels'],
+  ['chocolate-com-morango', 'Chocolate com Morango', 'https://images.pexels.com/photos/16848442/pexels-photo-16848442.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/chocolate%20strawberry%20dessert/', 'Beyza Yurtkuran / Pexels'],
+  ['brigadeiro', 'Brigadeiro', 'https://images.pexels.com/photos/28498172/pexels-photo-28498172.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/chocolate%20dessert/', 'Planka / Pexels'],
+  ['banana-com-canela', 'Banana com Canela', 'https://images.pexels.com/photos/1576120/pexels-photo-1576120.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/banana%20dessert/', 'Silvia Trigo / Pexels'],
+  ['prestigio', 'Prestígio', 'https://images.pexels.com/photos/4618548/pexels-photo-4618548.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/chocolate%20coconut%20dessert/', 'ArtHouse Studio / Pexels'],
+  ['refrigerante-2l', 'Refrigerante 2L', 'https://images.pexels.com/photos/14373170/pexels-photo-14373170.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/soda%20bottle/', 'Beyza Yurtkuran / Pexels'],
+  ['refrigerante-lata', 'Refrigerante lata', 'https://images.pexels.com/photos/5860659/pexels-photo-5860659.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/soda%20can/', 'Gustavo Santana / Pexels'],
+  ['suco-natural', 'Suco natural', 'https://images.pexels.com/photos/14510445/pexels-photo-14510445.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/orange%20juice/', 'Rae Wallis / Pexels'],
+  ['agua-mineral', 'Água mineral', 'https://images.pexels.com/photos/31699476/pexels-photo-31699476.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/water%20bottle/', 'Jaralol / Pexels'],
+  ['cerveja-long-neck', 'Cerveja long neck', 'https://images.pexels.com/photos/5537952/pexels-photo-5537952.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/beer%20bottle/', 'Cottonbro Studio / Pexels']
+].map(([slug, nome, url, fonte_url, credito]) => ({ slug, nome, url, fonte_url, credito }));
+
 async function garantirColunasPedidos() {
   try {
     await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT`);
@@ -99,6 +129,38 @@ async function garantirColunasPedidos() {
 }
 
 const guardarColunasPedido = garantirColunasPedidos();
+
+async function garantirFotosProdutos() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS fotos_produtos (
+      slug TEXT PRIMARY KEY,
+      nome TEXT NOT NULL,
+      url TEXT NOT NULL,
+      fonte_url TEXT NOT NULL,
+      credito TEXT NOT NULL,
+      atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(
+    `INSERT INTO fotos_produtos (slug, nome, url, fonte_url, credito)
+     SELECT slug, nome, url, fonte_url, credito
+     FROM jsonb_to_recordset($1::jsonb)
+       AS foto(slug TEXT, nome TEXT, url TEXT, fonte_url TEXT, credito TEXT)
+     ON CONFLICT (slug) DO UPDATE SET
+       nome = EXCLUDED.nome,
+       url = EXCLUDED.url,
+       fonte_url = EXCLUDED.fonte_url,
+       credito = EXCLUDED.credito,
+       atualizado_em = NOW()`,
+    [JSON.stringify(FOTOS_PRODUTOS)]
+  );
+}
+
+const guardarFotosProdutos = garantirFotosProdutos().catch(erro => {
+  console.error('Erro ao preparar fotos dos produtos:', erro);
+  throw erro;
+});
 
 function parseJsonField(valor) {
   if (!valor) return valor;
@@ -160,6 +222,22 @@ async function validarCredenciaisAdmin(usuario, senha) {
 }
  
 // Rota de cadastro
+app.get('/api/fotos-produtos', async (_req, res) => {
+  try {
+    await guardarFotosProdutos;
+    const resultado = await pool.query(
+      `SELECT slug, nome, url, fonte_url, credito, atualizado_em
+       FROM fotos_produtos
+       ORDER BY nome`
+    );
+    res.set('Cache-Control', 'public, max-age=900, stale-while-revalidate=86400');
+    return res.json({ fotos: resultado.rows });
+  } catch (erro) {
+    console.error('Erro ao listar fotos dos produtos:', erro);
+    return res.status(500).json({ erro: 'Não foi possível carregar as fotos do cardápio.' });
+  }
+});
+
 app.post('/api/cadastro', async (req, res) => {
   const { nome, email, senha, telefone } = req.body;
   const senhaHash = await bcrypt.hash(senha, 10);
