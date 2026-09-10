@@ -436,15 +436,38 @@
     'parma-com-rucula': 'https://152031577.cdn6.editmysite.com/uploads/1/5/2/0/152031577/NFKRPXUNJJKR2J45M4HMVWZ2.jpeg',
     'carne-seca-com-abobora': 'https://midias.correiobraziliense.com.br/_midias/jpg/2025/05/28/image_123650291__2_-52921388.jpg',
     'lombo-com-cheddar': 'https://static.wixstatic.com/media/c236a1_32695f7120254dc4962edcc31818fce7~mv2.jpg',
-    'chocolate-com-morango': 'https://images.pexels.com/photos/16848442/pexels-photo-16848442.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    'brigadeiro': 'https://images.pexels.com/photos/28498172/pexels-photo-28498172.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    'banana-com-canela': 'https://images.pexels.com/photos/1576120/pexels-photo-1576120.jpeg?auto=compress&cs=tinysrgb&w=1200',
-    'prestigio': 'https://images.pexels.com/photos/4618548/pexels-photo-4618548.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'chocolate-com-morango': 'assets/menu/pizza-chocolate-morango.jpg',
+    'brigadeiro': 'assets/menu/pizza-brigadeiro.jpg',
+    'banana-com-canela': 'assets/menu/pizza-banana-canela.jpg',
+    'prestigio': 'assets/menu/pizza-prestigio.jpg',
     'refrigerante-2l': 'https://images.pexels.com/photos/14373170/pexels-photo-14373170.jpeg?auto=compress&cs=tinysrgb&w=1200',
     'refrigerante-lata': 'https://images.pexels.com/photos/5860659/pexels-photo-5860659.jpeg?auto=compress&cs=tinysrgb&w=1200',
     'suco-natural': 'https://images.pexels.com/photos/14510445/pexels-photo-14510445.jpeg?auto=compress&cs=tinysrgb&w=1200',
     'agua-mineral': 'https://images.pexels.com/photos/31699476/pexels-photo-31699476.jpeg?auto=compress&cs=tinysrgb&w=1200',
     'cerveja-long-neck': 'https://images.pexels.com/photos/5537952/pexels-photo-5537952.jpeg?auto=compress&cs=tinysrgb&w=1200'
+  };
+
+  // Links externos podem bloquear o carregamento sem aviso. Se isso acontecer,
+  // usamos uma segunda fonte estável para nunca exibir uma imagem quebrada.
+  const fotosReserva = {
+    'mussarela': 'https://images.pexels.com/photos/30948829/pexels-photo-30948829.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'calabresa': 'https://images.pexels.com/photos/31587831/pexels-photo-31587831.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'portuguesa': 'https://images.pexels.com/photos/30301974/pexels-photo-30301974.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'frango-com-catupiry': 'https://images.pexels.com/photos/6068717/pexels-photo-6068717.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'quatro-queijos': 'https://images.pexels.com/photos/31587843/pexels-photo-31587843.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'marguerita': 'https://images.pexels.com/photos/12557605/pexels-photo-12557605.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'napolitana': 'https://images.pexels.com/photos/15491639/pexels-photo-15491639.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'toscana': 'https://images.pexels.com/photos/31587851/pexels-photo-31587851.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'bacon': 'https://images.pexels.com/photos/29829308/pexels-photo-29829308.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'milho-com-bacon': 'https://images.pexels.com/photos/36365578/pexels-photo-36365578.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'atum': 'https://images.pexels.com/photos/7780261/pexels-photo-7780261.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'vegetariana': 'https://images.pexels.com/photos/5175556/pexels-photo-5175556.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'pepperoni': 'https://images.pexels.com/photos/5903315/pexels-photo-5903315.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'costela-com-barbecue': 'https://images.pexels.com/photos/9353414/pexels-photo-9353414.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'camarao-ao-catupiry': 'https://images.pexels.com/photos/31587842/pexels-photo-31587842.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'parma-com-rucula': 'https://images.pexels.com/photos/37417637/pexels-photo-37417637.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'carne-seca-com-abobora': 'https://images.pexels.com/photos/31450871/pexels-photo-31450871.jpeg?auto=compress&cs=tinysrgb&w=1200',
+    'lombo-com-cheddar': 'https://images.pexels.com/photos/9394678/pexels-photo-9394678.jpeg?auto=compress&cs=tinysrgb&w=1200'
   };
 
   function normalizarSlug(texto) {
@@ -463,6 +486,21 @@
       item.prepend(imagem);
     }
 
+    const slug = item.dataset.slug || normalizarSlug(foto.nome);
+    const reserva = fotosReserva[slug];
+    imagem.dataset.tentouReserva = 'false';
+    imagem.onerror = () => {
+      if (reserva && imagem.dataset.tentouReserva !== 'true' && imagem.src !== reserva) {
+        imagem.dataset.tentouReserva = 'true';
+        imagem.src = reserva;
+        return;
+      }
+
+      imagem.onerror = null;
+      imagem.classList.add('foto-indisponivel');
+      imagem.src = 'favicon.svg';
+    };
+    imagem.classList.remove('foto-indisponivel');
     imagem.src = foto.url;
     imagem.alt = foto.nome;
     imagem.loading = 'lazy';
