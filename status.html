@@ -52,7 +52,7 @@
     const mensagem = document.getElementById('mensagem');
     let emailCliente = null;
     try {
-      emailCliente = JSON.parse(localStorage.getItem('usuarioLogado') || sessionStorage.getItem('usuarioTestePagamento') || 'null')?.email || null;
+      emailCliente = JSON.parse(localStorage.getItem('usuarioLogado') || 'null')?.email || null;
     } catch (erro) {
       emailCliente = null;
     }
