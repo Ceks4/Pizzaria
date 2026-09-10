@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title> Cardápio - Lospizzanitos</title>
 <link rel="stylesheet" href="cardapio.css">
 </head>
@@ -11,13 +12,14 @@
 <header class="topo">
   <div class="container topo-conteudo">
     <div class="marca">
-      <span class="marca-icone" aria-hidden="true">&#127829;</span>
+      <img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true">
       <div>
         <h1>Lospizzanitos</h1>
         <p>Pizzaria sabor caseiro &middot; forno a lenha</p>
       </div>
     </div>
     <nav class="menu">
+      <a href="entrada.html">Início</a>
       <a href="#tradicionais">Tradicionais</a>
       <a href="#especiais">Especiais</a>
       <a href="#doces">Doces</a>
@@ -35,6 +37,8 @@
     </nav>
   </div>
 </header>
+
+<div class="aviso-teste-site" id="avisoModoTeste" hidden>Modo de teste administrativo ativo: o checkout cobrará somente R$ 5,00. <button type="button" id="btnEncerrarTeste">Encerrar teste</button></div>
 
 <section class="destaque">
   <div class="container">
@@ -92,7 +96,7 @@
         <img class="foto" src="https://media-cdn.tripadvisor.com/media/photo-s/1c/7e/f3/53/pizza-frango-com-catupiry.jpg"> 
         <div class="item-topo">
           <h4>Frango com Catupiry</h4>
-          <span class="preco">R$ 10,00</span>
+          <span class="preco">R$ 59,00</span>
         </div>
         <p>Frango desfiado temperado, catupiry cremoso e milho.</p>
       </article>
@@ -413,6 +417,17 @@
 <div class="carrinho-overlay" id="carrinhoOverlay" hidden></div>
 
 <script>
+  const parametroTeste = new URLSearchParams(window.location.search).get('teste') === '1';
+  const tokenAdminTeste = localStorage.getItem('tokenAdmin');
+  if (parametroTeste && tokenAdminTeste) sessionStorage.setItem('modoTestePagamento', '1');
+  const modoTesteAtivo = sessionStorage.getItem('modoTestePagamento') === '1' && Boolean(tokenAdminTeste);
+  document.getElementById('avisoModoTeste').hidden = !modoTesteAtivo;
+  document.getElementById('btnEncerrarTeste').addEventListener('click', () => {
+    sessionStorage.removeItem('modoTestePagamento');
+    sessionStorage.removeItem('usuarioTestePagamento');
+    window.location.href = 'cardapio.html';
+  });
+
   let usuario = null;
   try {
     usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
@@ -432,92 +447,15 @@
   });
 
   const chaveCarrinho = 'carrinhoPizzaria';
-
-  const parsePreco = valor => {
-    if (valor === null || valor === undefined || valor === '') return 0;
-
-    const texto = String(valor).trim().replace(/R\$/g, '');
-    if (!texto) return 0;
-
-    if (texto.includes(',') && texto.includes('.')) {
-      return Number(texto.replace(/\./g, '').replace(',', '.'));
-    }
-
-    if (texto.includes(',')) {
-      return Number(texto.replace(',', '.'));
-    }
-
-    if (texto.includes('.')) {
-      const partes = texto.split('.');
-      if (partes.length > 2) {
-        return Number(partes.join(''));
-      }
-      if (partes[1] && partes[1].length <= 2) {
-        return Number(texto);
-      }
-      return Number(texto.replace(/\./g, ''));
-    }
-
-    return Number(texto);
-  };
-
-  const normalizarCarrinho = lista => {
-    if (!Array.isArray(lista)) return [];
-
-    return lista
-      .filter(item => item && item.nome)
-      .map(item => ({
-        ...item,
-        preco: parsePreco(item.preco),
-        quantidade: Number(item.quantidade) > 0 ? Number(item.quantidade) : 1
-      }))
-      .filter(item => Number(item.preco) > 0);
-  };
-
-  const limparCarrinhoInvalido = () => {
-    const chaves = [chaveCarrinho];
-    const entradas = chaves.flatMap(chave => {
-      const local = localStorage.getItem(chave);
-      const session = sessionStorage.getItem(chave);
-      return [local, session].filter(Boolean);
-    });
-
-    entradas.forEach(valor => {
-      try {
-        const lista = JSON.parse(valor);
-        const valido = Array.isArray(lista) && lista.some(item => item && item.nome && Number(parsePreco(item.preco)) > 0);
-        if (!valido) {
-          localStorage.removeItem(chaveCarrinho);
-          sessionStorage.removeItem(chaveCarrinho);
-        }
-      } catch (erro) {
-        localStorage.removeItem(chaveCarrinho);
-        sessionStorage.removeItem(chaveCarrinho);
-      }
-    });
-  };
-
-  limparCarrinhoInvalido();
-
   let carrinho = [];
   try {
-    const carrinhoJson = localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]';
-    const carrinhoSalvo = JSON.parse(carrinhoJson);
-    carrinho = normalizarCarrinho(Array.isArray(carrinhoSalvo) ? carrinhoSalvo : []);
-
-    if (carrinho.length > 0) {
-      localStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
-      sessionStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
-    } else if (Array.isArray(carrinhoSalvo) && carrinhoSalvo.length > 0) {
-      localStorage.removeItem(chaveCarrinho);
-      sessionStorage.removeItem(chaveCarrinho);
-    }
+    const carrinhoSalvo = localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]';
+    const itensSalvos = JSON.parse(carrinhoSalvo);
+    carrinho = Array.isArray(itensSalvos) ? itensSalvos : [];
   } catch (erro) {
     localStorage.removeItem(chaveCarrinho);
     sessionStorage.removeItem(chaveCarrinho);
-    carrinho = [];
   }
-
   const painelCarrinho = document.getElementById('carrinhoPainel');
   const overlayCarrinho = document.getElementById('carrinhoOverlay');
   const itensCarrinho = document.getElementById('carrinhoItens');
@@ -525,22 +463,12 @@
   const quantidadeCarrinho = document.getElementById('quantidadeCarrinho');
   const finalizarCompra = document.getElementById('finalizarCompra');
 
-  const formatarPreco = valor => Number(valor || 0).toLocaleString('pt-BR', {
+  const formatarPreco = valor => valor.toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL'
   });
 
   function salvarCarrinho() {
-    const carrinhoLimpo = carrinho
-      .filter(item => item && item.nome)
-      .map(item => ({
-        ...item,
-        preco: parsePreco(item.preco),
-        quantidade: Number(item.quantidade) > 0 ? Number(item.quantidade) : 1
-      }))
-      .filter(item => Number(item.preco) > 0);
-
-    carrinho = carrinhoLimpo;
     const carrinhoJson = JSON.stringify(carrinho);
     localStorage.setItem(chaveCarrinho, carrinhoJson);
     sessionStorage.setItem(chaveCarrinho, carrinhoJson);
@@ -548,8 +476,8 @@
 
   function atualizarCarrinho() {
     itensCarrinho.innerHTML = '';
-    const quantidade = carrinho.reduce((total, item) => total + (Number(item.quantidade) || 1), 0);
-    const total = carrinho.reduce((soma, item) => soma + parsePreco(item.preco) * (Number(item.quantidade) || 1), 0);
+    const quantidade = carrinho.reduce((total, item) => total + item.quantidade, 0);
+    const total = carrinho.reduce((soma, item) => soma + item.preco * item.quantidade, 0);
     quantidadeCarrinho.textContent = quantidade;
     totalCarrinho.textContent = formatarPreco(total);
     finalizarCompra.disabled = carrinho.length === 0;
@@ -567,11 +495,6 @@
           <strong>${item.nome}</strong>
           <span>${item.quantidade} x ${formatarPreco(item.preco)}</span>
         </div>
-        <div class="controle-quantidade">
-          <button type="button" data-diminuir="${item.id}" aria-label="Diminuir quantidade">-</button>
-          <span>${item.quantidade}</span>
-          <button type="button" data-aumentar="${item.id}" aria-label="Aumentar quantidade">+</button>
-        </div>
         <button type="button" data-remover="${item.id}">Remover</button>
       `;
       itensCarrinho.appendChild(linha);
@@ -581,7 +504,7 @@
   document.querySelectorAll('.item').forEach((item, indice) => {
     const nome = item.querySelector('h4').textContent.trim();
     const precoTexto = item.querySelector('.preco').textContent;
-    const preco = parsePreco(precoTexto);
+    const preco = Number(precoTexto.replace('R$', '').replace('.', '').replace(',', '.').trim());
     const botao = document.createElement('button');
     botao.type = 'button';
     botao.className = 'botao-comprar';
@@ -601,33 +524,6 @@
   });
 
   itensCarrinho.addEventListener('click', evento => {
-    const botaoAumentar = evento.target.closest('[data-aumentar]');
-    if (botaoAumentar) {
-      const idItem = Number(botaoAumentar.dataset.aumentar);
-      const item = carrinho.find(produto => produto.id === idItem);
-      if (item) {
-        item.quantidade += 1;
-        salvarCarrinho();
-        atualizarCarrinho();
-      }
-      return;
-    }
-
-    const botaoDiminuir = evento.target.closest('[data-diminuir]');
-    if (botaoDiminuir) {
-      const idItem = Number(botaoDiminuir.dataset.diminuir);
-      const item = carrinho.find(produto => produto.id === idItem);
-      if (!item) return;
-
-      item.quantidade -= 1;
-      if (item.quantidade <= 0) {
-        carrinho = carrinho.filter(produto => produto.id !== idItem);
-      }
-      salvarCarrinho();
-      atualizarCarrinho();
-      return;
-    }
-
     const botaoRemover = evento.target.closest('[data-remover]');
     if (!botaoRemover) return;
     carrinho = carrinho.filter(item => item.id !== Number(botaoRemover.dataset.remover));
