@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title>Pagamento — LosPizzanitos</title>
 <link rel="stylesheet" href="auth.css">
 <script src="https://sdk.mercadopago.com/js/v2"></script>
@@ -110,19 +111,21 @@
  
 <header class="topo">
   <div class="marca">
-    <span class="bolinha"></span>
+    <img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true">
     <div>
       <h1>LOSPIZZANITOS</h1>
       <p>Pizzaria sabor caseiro · forno a lenha</p>
     </div>
   </div>
   <nav>
+    <a class="btn-voltar-pagina" href="finalizar.html">&#8592; VOLTAR</a>
     <a href="cardapio.html">CARDÁPIO</a>
   </nav>
 </header>
  
 <main>
   <div class="card">
+    <div class="aviso-teste" id="avisoModoTeste" hidden>Teste administrativo ativo: cobrança limitada a R$ 5,00. Este pedido não entra no faturamento real.</div>
     <h2>PAGAMENTO</h2>
     <p class="subtitulo">Escolha uma forma de pagamento para confirmar seu pedido</p>
  
@@ -171,6 +174,9 @@
 <script>
   const URL_BACKEND = 'https://pizzaria-asml.onrender.com';
   const VALOR_MINIMO_CARTAO = 1;
+  const tokenAdminTeste = localStorage.getItem('tokenAdmin');
+  const modoTesteAtivo = sessionStorage.getItem('modoTestePagamento') === '1' && Boolean(tokenAdminTeste);
+  document.getElementById('avisoModoTeste').hidden = !modoTesteAtivo;
  
   // ---- Carrega carrinho e endereço salvos ----
   const chaveCarrinho = 'carrinhoPizzaria';
@@ -201,11 +207,12 @@
   }
 
   const endereco = JSON.parse(localStorage.getItem('enderecoEntrega')) || {};
-  const usuario = JSON.parse(localStorage.getItem('usuarioLogado')) || {};
+  const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || (modoTesteAtivo ? sessionStorage.getItem('usuarioTestePagamento') : 'null') || 'null') || {};
 
-  let total = 0;
-  carrinho.forEach(item => total += item.preco * item.quantidade);
-  total = Number(total.toFixed(2));
+  let totalOriginal = 0;
+  carrinho.forEach(item => totalOriginal += item.preco * item.quantidade);
+  totalOriginal = Number(totalOriginal.toFixed(2));
+  const total = modoTesteAtivo ? 5 : totalOriginal;
   document.getElementById('valorTotal').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
  
   const btnGerarPix = document.getElementById('btnGerarPix');
@@ -308,11 +315,12 @@
               : (usuario.nome || '');
             const respostaPagamento = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...(modoTesteAtivo ? { Authorization: `Bearer ${tokenAdminTeste}` } : {}) },
               body: JSON.stringify({
                 ...dadosCartao,
                 description: 'Pedido LosPizzanitos',
                 device_id: deviceId,
+                modo_teste: modoTesteAtivo,
                 order: {
                   buyer_name: nomeComprador,
                   items: carrinho.map(item => ({
@@ -408,9 +416,10 @@
     try {
       const resposta = await fetch(`${URL_BACKEND}/api/pagamento-pix`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(modoTesteAtivo ? { Authorization: `Bearer ${tokenAdminTeste}` } : {}) },
         body: JSON.stringify({
           valor: total,
+          modo_teste: modoTesteAtivo,
           descricao: 'Pedido LosPizzanitos',
           nome: usuario.nome || 'Cliente',
           email: usuario.email || '',
@@ -481,14 +490,15 @@
     try {
       await fetch(`${URL_BACKEND}/api/pedidos`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(modoTesteAtivo ? { Authorization: `Bearer ${tokenAdminTeste}` } : {}) },
         body: JSON.stringify({
           email: usuario.email || '',
           nome: usuario.nome || 'Cliente',
           itens: carrinho,
           total: total,
           endereco: endereco,
-          pagamento_id: pagamentoIdInformado
+          pagamento_id: pagamentoIdInformado,
+          modo_teste: modoTesteAtivo
         })
       });
     } catch (erro) {
