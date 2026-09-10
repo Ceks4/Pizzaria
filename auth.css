@@ -11,7 +11,7 @@
  
 body {
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #f4eadb, #fffaf3 52%, #f0dfca);
+  background: radial-gradient(circle at 15% 5%, #fff 0, transparent 28%), linear-gradient(135deg, #f4eadb, #fffaf3 52%, #f0dfca);
   color: #3a2a24;
   min-height: 100vh;
   display: flex;
@@ -20,14 +20,14 @@ body {
  
 /* Header, igual ao cardapio.html */
 header.topo {
-  background: linear-gradient(120deg, #70231f, #9f3026);
+  background: linear-gradient(115deg, #4f1717, #84291f 58%, #a23c27);
   color: #fff;
   padding: 18px max(24px, calc((100% - 1120px) / 2));
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  box-shadow: 0 4px 18px rgba(73, 27, 21, 0.16);
+  box-shadow: 0 8px 28px rgba(73, 27, 21, 0.2);
 }
  
 .marca {
@@ -42,9 +42,9 @@ header.topo {
 }
 
 .marca-logo {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   box-shadow: 0 5px 14px rgba(40, 10, 8, 0.24);
 }
 
@@ -69,17 +69,6 @@ header.topo {
   text-decoration: none;
 }
 
-.aviso-teste {
-  margin: 0 0 20px;
-  padding: 12px 14px;
-  border: 1px solid #e6a928;
-  border-radius: 8px;
-  color: #6c4600;
-  background: #fff4cd;
-  text-align: center;
-  font-size: .86rem;
-  font-weight: 700;
-}
  
 .marca h1 {
   font-size: 1.7rem;
@@ -93,10 +82,17 @@ header.topo {
   letter-spacing: 0.5px;
 }
  
+nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 nav a {
   color: #f4f1ea;
   text-decoration: none;
-  margin-left: 28px;
+  margin-left: 0;
   font-size: 0.85rem;
   font-family: Arial, sans-serif;
   letter-spacing: 1px;
@@ -118,10 +114,10 @@ main {
 }
  
 .card {
-  background: #fff;
+  background: rgba(255, 255, 255, .94);
   border: 1px solid #eadbca;
-  border-radius: 8px;
-  box-shadow: 0 18px 42px rgba(90, 40, 20, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(90, 40, 20, 0.14);
   padding: 44px;
   width: 100%;
   max-width: 420px;
@@ -131,6 +127,7 @@ main {
   font-size: 1.8rem;
   letter-spacing: 2px;
   color: #5c1f1f;
+  font-weight: 800;
   text-align: center;
   margin-bottom: 6px;
 }
@@ -157,18 +154,22 @@ label {
   display: block;
 }
  
-input {
+input,
+select,
+textarea {
   font-family: inherit;
   width: 100%;
   padding: 12px 14px;
   border: 1px solid #e0d8cc;
-  border-radius: 4px;
+  border-radius: 10px;
   font-size: 0.95rem;
   background: #fffaf3;
   color: #3a2a24;
 }
  
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid #a0522d;
   outline-offset: 1px;
   border-color: #a0522d;
@@ -185,22 +186,24 @@ input:focus-visible {
  
 button.btn-principal {
   margin-top: 8px;
-  background: #5c1f1f;
+  background: linear-gradient(115deg, #5c1f1f, #a0522d);
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 999px;
   padding: 13px;
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 1px;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 8px 18px rgba(92,31,31,.2);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow .2s ease;
 }
  
 button.btn-principal:hover,
 button.btn-principal:focus-visible {
   background: #a0522d;
   transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(92,31,31,.26);
 }
  
 button.btn-principal:disabled {
@@ -239,4 +242,6 @@ button.btn-principal:disabled {
   .card { padding: 32px 24px; }
   .linha-dupla { flex-direction: column; gap: 18px; }
   header.topo { padding: 20px 24px; }
+  header.topo { gap: 16px; }
+  nav { width: 100%; }
 }
