@@ -174,84 +174,29 @@
  
   // ---- Carrega carrinho e endereço salvos ----
   const chaveCarrinho = 'carrinhoPizzaria';
-  const parsePreco = valor => {
-    if (valor === null || valor === undefined || valor === '') return 0;
-
-    const texto = String(valor).trim().replace(/R\$/g, '');
-    if (!texto) return 0;
-
-    if (texto.includes(',') && texto.includes('.')) {
-      return Number(texto.replace(/\./g, '').replace(',', '.'));
-    }
-
-    if (texto.includes(',')) {
-      return Number(texto.replace(',', '.'));
-    }
-
-    if (texto.includes('.')) {
-      const partes = texto.split('.');
-      if (partes.length > 2) {
-        return Number(partes.join(''));
-      }
-      if (partes[1] && partes[1].length <= 2) {
-        return Number(texto);
-      }
-      return Number(texto.replace(/\./g, ''));
-    }
-
-    return Number(texto);
-  };
-
-  const normalizarCarrinho = lista => {
-    if (!Array.isArray(lista)) return [];
-
-    return lista
-      .filter(item => item && item.nome)
-      .map(item => ({
-        ...item,
-        preco: parsePreco(item.preco),
-        quantidade: Number(item.quantidade) > 0 ? Number(item.quantidade) : 1
-      }))
-      .filter(item => Number(item.preco) > 0);
-  };
-
-  const limparCarrinhoInvalido = () => {
-    const itemSalvo = localStorage.getItem(chaveCarrinho);
-    if (!itemSalvo) return;
-
-    try {
-      const lista = JSON.parse(itemSalvo);
-      const valido = Array.isArray(lista) && lista.some(item => item && item.nome && Number(parsePreco(item.preco)) > 0);
-      if (!valido) {
-        localStorage.removeItem(chaveCarrinho);
-      }
-    } catch (erro) {
-      localStorage.removeItem(chaveCarrinho);
-    }
-  };
-
-  limparCarrinhoInvalido();
-
   let carrinho = [];
 
   try {
-    const carrinhoSalvo = JSON.parse(localStorage.getItem(chaveCarrinho) || '[]');
-    carrinho = normalizarCarrinho(carrinhoSalvo);
+    const carrinhoJson = localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]';
+    const carrinhoSalvo = JSON.parse(carrinhoJson);
+    carrinho = Array.isArray(carrinhoSalvo) ? carrinhoSalvo : [];
 
     if (carrinho.length === 0) {
       const carrinhoLegacy = JSON.parse(localStorage.getItem('carrinho') || '[]');
       if (Array.isArray(carrinhoLegacy) && carrinhoLegacy.length > 0) {
-        carrinho = normalizarCarrinho(carrinhoLegacy);
+        carrinho = carrinhoLegacy;
         localStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+        sessionStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
         localStorage.removeItem('carrinho');
       }
     }
 
-    if (carrinho.length === 0 && Array.isArray(carrinhoSalvo) && carrinhoSalvo.length > 0) {
-      localStorage.removeItem(chaveCarrinho);
+    if (carrinho.length > 0) {
+      sessionStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
     }
   } catch (erro) {
     localStorage.removeItem(chaveCarrinho);
+    sessionStorage.removeItem(chaveCarrinho);
     localStorage.removeItem('carrinho');
   }
 
@@ -259,12 +204,9 @@
   const usuario = JSON.parse(localStorage.getItem('usuarioLogado')) || {};
 
   let total = 0;
-  carrinho.forEach(item => total += parsePreco(item.preco) * (Number(item.quantidade) || 1));
+  carrinho.forEach(item => total += item.preco * item.quantidade);
   total = Number(total.toFixed(2));
-  document.getElementById('valorTotal').textContent = total.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  });
+  document.getElementById('valorTotal').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
  
   const btnGerarPix = document.getElementById('btnGerarPix');
   const mensagem = document.getElementById('mensagem');
@@ -345,8 +287,8 @@
         onSubmit: async dadosCartao => {
           try {
             const documento = String(dadosCartao?.payer?.identification?.number || '').replace(/\D/g, '');
-            if (documento && ![11, 14].includes(documento.length)) {
-              throw new Error('Informe um CPF ou CNPJ válido para continuar com o pagamento.');
+            if (![11, 14].includes(documento.length)) {
+              throw new Error('Informe um CPF válido para continuar com o pagamento.');
             }
 
             const deviceId = await obterDeviceId();
@@ -375,19 +317,20 @@
             });
             const dados = await lerResposta(respostaPagamento);
             if (!respostaPagamento.ok) {
-              throw new Error(traduzirMensagemErroPagamento(dados.erro) || 'Não foi possível processar o cartão.');
+              throw new Error(dados.erro || 'Não foi possível processar o cartão.');
             }
 
             if (dados.status === 'approved') {
               pagamentoId = dados.id;
               await salvarPedido(pagamentoId);
               localStorage.removeItem(chaveCarrinho);
+              sessionStorage.removeItem(chaveCarrinho);
               localStorage.removeItem('carrinho');
               window.location.href = 'status.html';
               return;
             }
 
-            throw new Error(traduzirMensagemErroPagamento(dados.detalhe) || 'O pagamento não foi aprovado. Tente outro cartão.');
+            throw new Error(mensagemRecusaCartao(dados.detalhe));
           } catch (erro) {
             mensagem.textContent = erro.message || 'Não foi possível processar o cartão.';
             mensagem.className = 'mensagem erro';
@@ -396,19 +339,6 @@
         }
       }
     });
-  }
-
-  function traduzirMensagemErroPagamento(detalhe) {
-    const texto = String(detalhe || '').trim();
-    const chave = texto.toLowerCase();
-    const mensagens = {
-      cc_rejected_high_risk: 'Pagamento não autorizado por segurança. Tente outro cartão ou Pix.'
-    };
-
-    if (mensagens[chave]) return mensagens[chave];
-    if (chave.includes('cc_rejected_high_risk')) return mensagens.cc_rejected_high_risk;
-
-    return texto || 'Não foi possível processar o cartão.';
   }
 
   async function lerResposta(resposta) {
@@ -522,6 +452,7 @@
         await salvarPedido();
 
         localStorage.removeItem(chaveCarrinho);
+        sessionStorage.removeItem(chaveCarrinho);
         localStorage.removeItem('carrinho');
 
         setTimeout(() => {
