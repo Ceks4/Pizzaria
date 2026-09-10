@@ -254,6 +254,15 @@
     return '';
   }
 
+  async function aguardarMercadoPago() {
+    for (let tentativa = 0; tentativa < 30; tentativa += 1) {
+      if (typeof window.MercadoPago === 'function') return window.MercadoPago;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    throw new Error('Não foi possível carregar o checkout do Mercado Pago. Atualize a página e tente novamente.');
+  }
+
   async function inicializarCartao() {
     if (controladorCartao) return;
 
@@ -267,7 +276,8 @@
       throw new Error('O cartão ainda não está configurado no servidor. Adicione MP_PUBLIC_KEY no Render.');
     }
 
-    const mp = new MercadoPago(config.publicKey, { locale: 'pt-BR' });
+    const MercadoPagoSDK = await aguardarMercadoPago();
+    const mp = new MercadoPagoSDK(config.publicKey, { locale: 'pt-BR' });
     const bricksBuilder = mp.bricks();
     controladorCartao = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
       initialization: {
