@@ -264,6 +264,12 @@ button.btn-principal:hover,
   background: var(--purple) !important;
 }
 
+.menu-page .foto.foto-indisponivel {
+  object-fit: contain;
+  padding: 46px;
+  background: linear-gradient(135deg, var(--purple), var(--ink));
+}
+
 .hero-art {
   position: relative;
   aspect-ratio: .92;
