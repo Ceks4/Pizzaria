@@ -7,28 +7,28 @@
   <title>Painel administrativo - LosPizzanitos</title>
   <link rel="stylesheet" href="auth.css">
   <style>
-    .card { max-width: 1000px; }
+    .card { max-width: 1120px; }
     .painel { width: 100%; }
     .painel-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
     .painel-cabecalho h2 { margin: 0; }
     .acoes-painel { display: flex; flex-wrap: wrap; gap: 8px; }
-    .btn-secundario { border: 1px solid #a0522d; border-radius: 8px; background: transparent; color: #a0522d; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+    .btn-secundario { border: 1px solid #d7b8a4; border-radius: 999px; background: #fffaf5; color: #7c3426; padding: 10px 14px; font-weight: 800; cursor: pointer; transition: .2s ease; }
     .btn-secundario:hover { background: #a0522d; color: #fff; }
-    .btn-teste { border-color: #bd7b00; color: #805200; background: #fff4cd; }
-    .btn-teste:hover { border-color: #805200; background: #805200; }
     .tabela-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 680px; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 780px; overflow: hidden; border: 1px solid #eadbca; border-radius: 14px; }
     th, td { padding: 13px 10px; border-bottom: 1px solid #e0d8cc; text-align: left; vertical-align: top; font-size: .86rem; }
-    th { color: #5c1f1f; font-size: .75rem; letter-spacing: .6px; text-transform: uppercase; }
+    th { position: sticky; top: 0; color: #5c1f1f; background: #f9ecdf; font-size: .75rem; letter-spacing: .6px; text-transform: uppercase; }
     td { color: #3a2a24; }
+    tbody tr { background: #fff; transition: background .2s ease; }
+    tbody tr:hover { background: #fffaf5; }
     .detalhes { white-space: pre-line; }
     .vazio { color: #7a6a60; padding: 24px 0; }
-    .status-select { border: 1px solid #e0d8cc; border-radius: 6px; padding: 8px; color: #3a2a24; background: #faf8f4; }
+    .status-select { border: 1px solid #e0d8cc; border-radius: 999px; padding: 8px 10px; color: #3a2a24; background: #faf8f4; }
     .filtros { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
     .filtros input, .filtros select { margin: 0; }
     .filtros input { flex: 1; }
-    .resumo-grid { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
-    .resumo-card { padding: 14px 16px; border: 1px solid #e0d8cc; border-radius: 10px; background: #fffaf5; }
+    .resumo-grid { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .resumo-card { padding: 18px; border: 1px solid #eadbca; border-radius: 16px; background: linear-gradient(145deg, #fff, #fff7ef); box-shadow: 0 10px 24px rgba(92,31,31,.07); }
     .resumo-card small { display: block; color: #7a6a60; text-transform: uppercase; letter-spacing: .08em; }
     .resumo-card strong { display: block; margin-top: 8px; font-size: 1.25rem; color: #5c1f1f; }
     .badge { display: inline-flex; margin-top: 5px; padding: 3px 7px; border-radius: 999px; background: #efe3d5; color: #5c1f1f; font-size: .68rem; font-weight: 800; }
@@ -58,11 +58,11 @@
       </section>
 
       <section id="painelConteudo" hidden>
-        <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><div class="acoes-painel"><button class="btn-secundario btn-teste" id="btnModoTeste" type="button">TESTAR PAGAMENTO R$ 5</button><button class="btn-secundario" id="btnExportar" type="button">EXPORTAR CSV</button><button class="btn-secundario" id="btnAutoAtualizar" type="button">AUTO: LIGADO</button><button class="btn-secundario" id="btnAtualizar" type="button">ATUALIZAR</button><button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div></div>
+        <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><div class="acoes-painel"><button class="btn-secundario" id="btnExportar" type="button">EXPORTAR CSV</button><button class="btn-secundario" id="btnAutoAtualizar" type="button">AUTO: LIGADO</button><button class="btn-secundario" id="btnAtualizar" type="button">ATUALIZAR</button><button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div></div>
         <div id="resumoAdmin" class="resumo-grid"></div>
         <p class="atualizacao" id="ultimaAtualizacao">Aguardando atualização...</p>
         <p class="mensagem" id="mensagemPedidos" role="status"></p>
-        <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar por cliente, e-mail ou número"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select><select id="filtroTipo"><option value="">Reais e testes</option><option value="real">Somente reais</option><option value="teste">Somente testes</option></select></div>
+        <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar por cliente, e-mail ou número"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select></div>
         <div class="tabela-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Entrega</th><th>Total</th><th>Status</th><th>Data</th></tr></thead><tbody id="listaPedidos"></tbody></table></div>
       </section>
     </div>
@@ -113,11 +113,9 @@
       lista.innerHTML = '';
       const busca = document.getElementById('buscaPedidos').value.toLowerCase().trim();
       const status = document.getElementById('filtroStatus').value;
-      const tipo = document.getElementById('filtroTipo').value;
       const filtrados = pedidos.filter(pedido => {
         const correspondeBusca = !busca || String(pedido.id).includes(busca) || (pedido.cliente_nome || '').toLowerCase().includes(busca) || (pedido.cliente_email || '').toLowerCase().includes(busca);
-        const correspondeTipo = !tipo || (tipo === 'teste' ? pedido.teste : !pedido.teste);
-        return correspondeBusca && correspondeTipo && (!status || pedido.status === status);
+        return correspondeBusca && (!status || pedido.status === status);
       });
       if (filtrados.length === 0) { lista.innerHTML = '<tr><td class="vazio" colspan="7">Nenhum pedido encontrado.</td></tr>'; return; }
       filtrados.forEach(pedido => {
@@ -177,8 +175,7 @@
           ['Faturamento real', formatarPreco(dados.faturamento || 0)],
           ['Todos os pedidos', dados.total_pedidos || 0],
           ['Em andamento', dados.pedidos_em_andamento || 0],
-          ['Cancelados', dados.pedidos_cancelados || 0],
-          ['Pedidos de teste', dados.pedidos_teste || 0]
+          ['Cancelados', dados.pedidos_cancelados || 0]
         ].map(([rotulo, valor]) => `<div class="resumo-card"><small>${rotulo}</small><strong>${valor}</strong></div>`).join('');
       } catch (erro) {
         document.getElementById('mensagemPedidos').textContent = erro.message || 'Não foi possível carregar o resumo.';
@@ -201,15 +198,7 @@
     }
     document.getElementById('buscaPedidos').addEventListener('input', renderizarPedidos);
     document.getElementById('filtroStatus').addEventListener('change', renderizarPedidos);
-    document.getElementById('filtroTipo').addEventListener('change', renderizarPedidos);
     document.getElementById('btnAtualizar').addEventListener('click', () => { carregarResumo(); carregarPedidos(); });
-    document.getElementById('btnModoTeste').addEventListener('click', () => {
-      sessionStorage.setItem('modoTestePagamento', '1');
-      sessionStorage.setItem('usuarioTestePagamento', JSON.stringify({ nome: 'Teste Administrativo', email: 'test@testuser.com' }));
-      sessionStorage.removeItem('carrinhoPizzaria');
-      localStorage.removeItem('carrinhoPizzaria');
-      window.location.href = 'cardapio.html?teste=1';
-    });
     document.getElementById('btnExportar').addEventListener('click', () => {
       const linhas = [['Pedido', 'Tipo', 'Cliente', 'Email', 'Total', 'Status', 'Data']];
       pedidos.forEach(pedido => linhas.push([pedido.id, pedido.teste ? 'Teste' : 'Real', pedido.cliente_nome || '', pedido.cliente_email || '', pedido.total, pedido.status, new Date(pedido.criado_em).toLocaleString('pt-BR')]));
@@ -238,7 +227,7 @@
         document.getElementById('mensagemPedidos').className = 'mensagem erro';
       }
     }
-    document.getElementById('btnSairAdmin').addEventListener('click', () => { localStorage.removeItem('tokenAdmin'); sessionStorage.removeItem('modoTestePagamento'); sessionStorage.removeItem('usuarioTestePagamento'); mostrarLogin(); });
+    document.getElementById('btnSairAdmin').addEventListener('click', () => { localStorage.removeItem('tokenAdmin'); mostrarLogin(); });
     intervaloAtualizacao = setInterval(() => { if (autoAtualizar && !painelConteudo.hidden) { carregarResumo(); carregarPedidos(); } }, 30000);
     if (tokenSalvo()) mostrarPainel();
   </script>
