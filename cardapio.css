@@ -16,7 +16,7 @@
   
   body {
     font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #f6efe3 0%, #fffaf3 48%, #f2e5d1 100%);
+    background: radial-gradient(circle at 15% 0%, #fffdf8 0, transparent 32%), linear-gradient(135deg, #f6efe3 0%, #fffaf3 48%, #f2e5d1 100%);
     color: var(--texto);
     line-height: 1.6;
   }
@@ -30,12 +30,13 @@
   
   /* Topo */
   .topo {
-    background-color: var(--vermelho);
+    background: linear-gradient(115deg, #4f1717, #84291f 58%, #a23c27);
     color: var(--bege);
-    padding: 18px 0;
+    padding: 14px 0;
     position: sticky;
     top: 0;
     z-index: 10;
+    box-shadow: 0 8px 28px rgba(73, 27, 21, .2);
   }
   
   .topo-conteudo {
@@ -58,34 +59,12 @@
   }
 
   .marca-logo {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
     box-shadow: 0 5px 14px rgba(40, 10, 8, 0.24);
   }
 
-  .aviso-teste-site {
-    position: sticky;
-    top: 78px;
-    z-index: 9;
-    padding: 10px 20px;
-    background: #fff1b8;
-    border-bottom: 1px solid #e6a928;
-    color: #684300;
-    text-align: center;
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .aviso-teste-site button {
-    margin-left: 8px;
-    border: 0;
-    border-bottom: 1px solid currentColor;
-    color: inherit;
-    background: transparent;
-    font: inherit;
-    cursor: pointer;
-  }
   
   .marca h1 {
     font-size: 24px;
@@ -103,7 +82,8 @@
   .menu {
     display: flex;
     flex-wrap: wrap;
-    gap: 22px;
+    gap: 8px;
+    align-items: center;
   }
   
   .menu a {
@@ -112,19 +92,21 @@
     font-size: 13px;
     letter-spacing: 1px;
     text-transform: uppercase;
-    padding-bottom: 4px;
+    padding: 8px 10px;
+    border-radius: 999px;
     border-bottom: 1px solid transparent;
   }
   
   .menu a:hover {
-    border-bottom-color: var(--bege);
+    border-bottom-color: transparent;
+    background: rgba(255, 255, 255, .12);
   }
 
   .botao-carrinho,
   .botao-comprar,
   .finalizar-compra {
     border: 0;
-    border-radius: 3px;
+    border-radius: 999px;
     cursor: pointer;
     font-size: 12px;
     letter-spacing: 1px;
@@ -137,7 +119,9 @@
     gap: 7px;
     background-color: var(--bege);
     color: var(--vermelho);
-    padding: 6px 8px;
+    padding: 8px 12px;
+    font-weight: 800;
+    box-shadow: 0 5px 14px rgba(35, 9, 8, .2);
   }
 
   .contador-carrinho {
@@ -194,16 +178,16 @@
   
   /* Destaque */
   .destaque {
-    background-color: var(--bege-escuro);
-    padding: 56px 0;
+    background: radial-gradient(circle at 50% -20%, #fff 0, transparent 55%), linear-gradient(180deg, #f4e1c6, #f8ecdc);
+    padding: 72px 0 64px;
     text-align: center;
     border-bottom: 1px solid var(--borda);
   }
   
   .destaque h2 {
-    font-size: 38px;
-    font-weight: 400;
-    letter-spacing: 6px;
+    font-size: clamp(2.2rem, 6vw, 4rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
     text-transform: uppercase;
     color: var(--vermelho);
   }
@@ -218,7 +202,7 @@
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 28px;
+    gap: 12px;
     margin-top: 24px;
     font-size: 13px;
     text-transform: uppercase;
@@ -229,6 +213,8 @@
   .tamanhos strong {
     color: var(--vermelho);
   }
+
+  .tamanhos li { padding: 7px 12px; border: 1px solid rgba(159,48,38,.18); border-radius: 999px; background: rgba(255,255,255,.58); }
   
   /* Seções */
   .secao {
@@ -240,8 +226,8 @@
   }
   
   .secao-titulo h3 {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 23px;
+    font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 3px;
     color: var(--vermelho);
@@ -264,9 +250,10 @@
   .item {
     background-color: #fff;
     border: 1px solid var(--borda);
-    border-radius: 8px;
-    padding: 0 20px 20px;
+    border-radius: 18px;
+    padding: 0 22px 22px;
     overflow: hidden;
+    box-shadow: 0 10px 28px rgba(85, 34, 22, .07);
     transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   }
 
@@ -275,14 +262,14 @@
   }
 
   .foto {
-    width: calc(100% + 20px);
+    width: calc(100% + 24px);
     height: 230px;
     margin: 10px -10px 18px;
     display: block;
     object-fit: cover;
     object-position: center;
     background-color: #faf8f4;
-    border-radius: 8px;
+    border-radius: 14px;
     padding: 0;
   }
 
@@ -293,15 +280,17 @@
   
   .item:hover {
     border-color: var(--vermelho-claro);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(112, 35, 31, 0.1);
+    transform: translateY(-5px);
+    box-shadow: 0 18px 38px rgba(112, 35, 31, 0.14);
   }
 
   .botao-comprar {
     margin-top: 16px;
-    padding: 9px 14px;
-    background-color: var(--vermelho);
+    padding: 10px 16px;
+    background: linear-gradient(115deg, #70231f, #a33a2b);
     color: var(--bege);
+    font-weight: 800;
+    box-shadow: 0 6px 14px rgba(112,35,31,.18);
   }
 
   .botao-comprar:hover,
@@ -325,7 +314,10 @@
   
   .preco {
     color: var(--vermelho);
-    font-weight: 600;
+    font-weight: 800;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: #fff0df;
     white-space: nowrap;
   }
   
@@ -361,8 +353,9 @@
   .ajuda-bloco {
     background-color: #fff;
     border: 1px solid var(--borda);
-    border-radius: 8px;
-    padding: 24px;
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 10px 28px rgba(85,34,22,.07);
   }
   
   .ajuda-bloco h4 {
@@ -464,8 +457,8 @@
     color: var(--texto);
     background-color: var(--bege);
     border: 1px solid var(--borda);
-    border-radius: 3px;
-    padding: 10px 12px;
+    border-radius: 10px;
+    padding: 12px 14px;
     margin-bottom: 16px;
     resize: vertical;
   }
@@ -482,7 +475,7 @@
     background-color: var(--vermelho);
     color: var(--bege);
     border: none;
-    border-radius: 3px;
+    border-radius: 999px;
     padding: 12px 26px;
     font-size: 13px;
     letter-spacing: 1px;
@@ -531,8 +524,8 @@
     width: min(410px, 100%);
     height: 100vh;
     padding: 24px;
-    background-color: var(--bege);
-    box-shadow: -6px 0 20px rgba(58, 50, 48, 0.18);
+    background: linear-gradient(180deg, #fffdf9, var(--bege));
+    box-shadow: -16px 0 46px rgba(58, 24, 18, 0.22);
   }
 
   .carrinho-cabecalho,
@@ -619,8 +612,10 @@
     width: 100%;
     margin-top: 16px;
     padding: 13px;
-    background-color: var(--vermelho);
+    background: linear-gradient(115deg, #70231f, #a33a2b);
     color: var(--bege);
+    font-weight: 800;
+    box-shadow: 0 8px 18px rgba(112,35,31,.2);
   }
 
   .finalizar-compra:disabled {
