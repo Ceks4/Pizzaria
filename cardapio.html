@@ -412,6 +412,96 @@
 <div class="carrinho-overlay" id="carrinhoOverlay" hidden></div>
 
 <script>
+  const URL_BACKEND = window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : 'https://pizzaria-asml.onrender.com';
+
+  const fotosPadrao = {
+    'mussarela': '30948829',
+    'calabresa': '31587831',
+    'portuguesa': '30301974',
+    'frango-com-catupiry': '6068717',
+    'quatro-queijos': '31587843',
+    'marguerita': '12557605',
+    'napolitana': '15491639',
+    'toscana': '31587851',
+    'bacon': '29829308',
+    'milho-com-bacon': '36365578',
+    'atum': '7780261',
+    'vegetariana': '5175556',
+    'pepperoni': '5903315',
+    'costela-com-barbecue': '9353414',
+    'camarao-ao-catupiry': '31587842',
+    'parma-com-rucula': '37417637',
+    'carne-seca-com-abobora': '31450871',
+    'lombo-com-cheddar': '9394678',
+    'chocolate-com-morango': '16848442',
+    'brigadeiro': '28498172',
+    'banana-com-canela': '1576120',
+    'prestigio': '4618548',
+    'refrigerante-2l': '14373170',
+    'refrigerante-lata': '5860659',
+    'suco-natural': '14510445',
+    'agua-mineral': '31699476',
+    'cerveja-long-neck': '5537952'
+  };
+
+  function normalizarSlug(texto) {
+    return texto.normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  function aplicarFoto(item, foto) {
+    let imagem = item.querySelector('.foto');
+    if (!imagem) {
+      imagem = document.createElement('img');
+      imagem.className = 'foto';
+      item.prepend(imagem);
+    }
+
+    imagem.src = foto.url;
+    imagem.alt = foto.nome;
+    imagem.loading = 'lazy';
+    imagem.decoding = 'async';
+    if (foto.credito) imagem.title = `Foto: ${foto.credito}`;
+  }
+
+  const itensDoCardapio = new Map();
+  document.querySelectorAll('.item').forEach(item => {
+    const nome = item.querySelector('h4')?.textContent.trim();
+    if (!nome) return;
+    const slug = normalizarSlug(nome);
+    item.dataset.slug = slug;
+    itensDoCardapio.set(slug, item);
+
+    const idFoto = fotosPadrao[slug];
+    if (idFoto) {
+      aplicarFoto(item, {
+        nome: nome.startsWith('Refrigerante') || ['Suco natural', 'Água mineral', 'Cerveja long neck'].includes(nome)
+          ? nome
+          : `Foto de ${nome}`,
+        url: `https://images.pexels.com/photos/${idFoto}/pexels-photo-${idFoto}.jpeg?auto=compress&cs=tinysrgb&w=1200`
+      });
+    }
+  });
+
+  fetch(`${URL_BACKEND}/api/fotos-produtos`)
+    .then(resposta => {
+      if (!resposta.ok) throw new Error('API de fotos indisponível');
+      return resposta.json();
+    })
+    .then(({ fotos }) => {
+      if (!Array.isArray(fotos)) return;
+      fotos.forEach(foto => {
+        const item = itensDoCardapio.get(foto.slug);
+        if (item) aplicarFoto(item, foto);
+      });
+    })
+    .catch(erro => console.warn('Usando fotos locais de reserva:', erro.message));
+
   let usuario = null;
   try {
     usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
