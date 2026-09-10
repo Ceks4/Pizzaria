@@ -14,19 +14,19 @@
 body {
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
   margin: 0;
-  background: var(--creme);
+  background: linear-gradient(180deg, #fffaf3 0%, #f8ecdd 100%);
   color: var(--texto);
   line-height: 1.6;
 }
 
 header {
-  background: var(--terracota-escuro);
+  background: linear-gradient(115deg, #4f1717, #84291f 58%, #a23c27);
   color: white;
   padding: 18px 0;
   position: sticky;
   top: 0;
   z-index: 10;
-  box-shadow: 0 4px 18px rgba(73, 27, 21, 0.16);
+  box-shadow: 0 8px 28px rgba(73, 27, 21, 0.2);
 }
 
 nav {
@@ -48,9 +48,9 @@ nav {
 }
 
 .marca-logo {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
   box-shadow: 0 5px 14px rgba(40, 10, 8, 0.24);
 }
 
@@ -64,7 +64,7 @@ nav a {
   letter-spacing: 0.8px;
   text-transform: uppercase;
   transition: all 0.3s ease;
-  padding-bottom: 5px;
+  padding: 8px 2px;
 }
 
 nav a:hover {
@@ -75,7 +75,7 @@ nav a:hover {
 .btn-auth {
   display: inline-block;
   padding: 8px 13px;
-  border-radius: 4px;
+  border-radius: 999px;
   margin-left: 10px;
 }
 
@@ -117,10 +117,10 @@ nav a:hover {
 }
 
 .hero {
-  background: linear-gradient(110deg, rgba(58, 20, 15, 0.82), rgba(112, 35, 31, 0.42)),
+  background: linear-gradient(110deg, rgba(44, 12, 12, 0.9), rgba(112, 35, 31, 0.48)),
     url('https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1200&q=80') center/cover no-repeat;
   color: white;
-  min-height: 500px;
+  min-height: 590px;
   display: flex;
   align-items: center;
   padding: 90px 20px;
@@ -132,7 +132,9 @@ nav a:hover {
   margin: 0 auto 14px;
   font-size: clamp(2.4rem, 6vw, 4.7rem);
   line-height: 1.02;
-  font-weight: 400;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
 }
 
 .hero p {
@@ -141,6 +143,23 @@ nav a:hover {
   font-size: 1.15rem;
 }
 
+.hero-selo {
+  display: inline-flex;
+  margin-bottom: 18px;
+  padding: 7px 13px;
+  border: 1px solid rgba(255, 255, 255, .5);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .12);
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.hero-acoes { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.hero-beneficios { display: flex; justify-content: center; flex-wrap: wrap; gap: 22px; margin: 28px 0 0; padding: 0; list-style: none; font-size: .86rem; }
+.hero-beneficios li::before { content: "✓"; margin-right: 7px; color: #ffd06b; font-weight: 900; }
+
 section {
   padding: 72px 0;
 }
@@ -148,7 +167,8 @@ section {
 section h2 {
   color: var(--terracota-escuro);
   font-size: 2rem;
-  font-weight: 400;
+  font-weight: 800;
+  letter-spacing: -.02em;
   margin: 0 0 24px;
 }
 
@@ -161,8 +181,8 @@ section h2 {
 .pizza {
   background: white;
   border: 1px solid #eadbca;
-  border-radius: 8px;
-  padding: 26px;
+  border-radius: 18px;
+  padding: 30px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   box-shadow: 0 8px 24px rgba(112, 35, 31, 0.08);
 }
@@ -171,6 +191,9 @@ section h2 {
   transform: translateY(-6px);
   box-shadow: 0 16px 30px rgba(112, 35, 31, 0.14);
 }
+
+.pizza h3 { font-size: 1.25rem; }
+.pizza strong { display: inline-flex; margin-top: 8px; padding: 6px 10px; border-radius: 999px; background: #fff0df; }
 
 .pizza h3 {
   color: var(--terracota-escuro);
@@ -199,13 +222,22 @@ footer {
   color: var(--terracota-escuro);
   padding: 12px 20px;
   text-decoration: none;
-  border-radius: 4px;
+  border-radius: 999px;
   display: inline-block;
   margin: 24px 5px 0;
   font-family: Arial, sans-serif;
   font-weight: 700;
   transition: all 0.3s ease;
 }
+
+.btn-claro { color: #fff; background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .7); }
+.btn-claro:hover { color: var(--terracota-escuro); background: #fff; }
+
+#sobre { margin-bottom: 40px; padding: 54px; border: 1px solid #eadbca; border-radius: 24px; background: rgba(255,255,255,.76); box-shadow: 0 16px 40px rgba(112,35,31,.08); }
+#sobre p { max-width: 760px; color: var(--suave); font-size: 1.05rem; }
+.contato-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.contato-grade p { padding: 22px; border-radius: 16px; background: #fff; box-shadow: 0 10px 28px rgba(112,35,31,.08); color: var(--suave); }
+.contato-grade strong { color: var(--terracota-escuro); }
 
 .btn-cardapio:hover {
   transform: translateY(-3px);
@@ -217,4 +249,6 @@ footer {
   .cardapio {
     grid-template-columns: 1fr;
   }
+  .contato-grade { grid-template-columns: 1fr; }
+  #sobre { padding: 30px; }
 }
