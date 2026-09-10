@@ -126,11 +126,6 @@ function tokenAdminDaRequisicao(req) {
   return header.startsWith('Bearer ') ? header.slice(7) : null;
 }
 
-function adminAutorizado(req) {
-  const token = tokenAdminDaRequisicao(req);
-  return Boolean(token && adminTokens.has(token));
-}
-
 function autenticarAdmin(req, res, next) {
   const token = tokenAdminDaRequisicao(req);
 
@@ -238,7 +233,7 @@ app.get('/api/admin/resumo', autenticarAdmin, async (req, res) => {
   try {
     const resultado = await pool.query(
       `SELECT
-         COUNT(*)::int AS total_pedidos,
+         COUNT(*) FILTER (WHERE teste = FALSE)::int AS total_pedidos,
          COALESCE(SUM(CASE WHEN status <> 'cancelado' AND teste = FALSE THEN total ELSE 0 END), 0)::numeric AS faturamento,
          COUNT(*) FILTER (WHERE status = 'cancelado' AND teste = FALSE)::int AS pedidos_cancelados,
          COUNT(*) FILTER (WHERE status IN ('em_preparacao', 'saiu_para_entrega') AND teste = FALSE)::int AS pedidos_em_andamento,
@@ -334,13 +329,8 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
 
 // Rota para gerar o Pix (Mercado Pago)
 app.post('/api/pagamento-pix', async (req, res) => {
-  const { valor, descricao, email, modo_teste } = req.body;
-  const modoTesteAutorizado = Boolean(modo_teste && adminAutorizado(req));
-  const valorNormalizado = modoTesteAutorizado ? 5 : normalizarValor(valor);
-
-  if (modo_teste && !modoTesteAutorizado) {
-    return res.status(403).json({ erro: 'O modo de teste precisa ser iniciado pelo painel administrativo.' });
-  }
+  const { valor, descricao, email } = req.body;
+  const valorNormalizado = normalizarValor(valor);
 
   if (!process.env.MP_ACCESS_TOKEN) {
     return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
@@ -392,21 +382,15 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     issuer_id,
     payer,
     device_id,
-    order,
-    modo_teste
+    order
   } = req.body || {};
-  const modoTesteAutorizado = Boolean(modo_teste && adminAutorizado(req));
-  const valor = modoTesteAutorizado ? 5 : normalizarValor(transaction_amount, 1);
+  const valor = normalizarValor(transaction_amount, 1);
   const documentoBruto = payer?.identification?.number;
   const documento = textoPagamento(documentoBruto == null ? '' : String(documentoBruto), 20).replace(/\D/g, '');
   const deviceId = textoPagamento(device_id, 255);
 
   if (!process.env.MP_ACCESS_TOKEN) {
     return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
-  }
-
-  if (modo_teste && !modoTesteAutorizado) {
-    return res.status(403).json({ erro: 'O modo de teste precisa ser iniciado pelo painel administrativo.' });
   }
 
   if (valor === null || !token || !payment_method_id || !payer?.email) {
@@ -422,16 +406,13 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     ? order.items.reduce((soma, item) => soma + (Number(item?.unit_price) || 0) * (Number(item?.quantity) || 0), 0)
     : 0;
 
-  if (!modoTesteAutorizado && Math.abs(totalItens - valor) > 0.009) {
+  if (Math.abs(totalItens - valor) > 0.009) {
     return res.status(400).json({ erro: 'O valor do pagamento não corresponde ao total do carrinho.' });
   }
 
   try {
     const payment = new Payment(client);
-    const orderPagamento = modoTesteAutorizado
-      ? { ...order, items: [{ id: 'teste-admin', title: 'Pedido de teste administrativo', quantity: 1, unit_price: 5 }] }
-      : order;
-    const dadosAntifraude = montarDadosAntifraude(req, orderPagamento);
+    const dadosAntifraude = montarDadosAntifraude(req, order);
     const nomeComprador = dadosAntifraude.payer || {};
     const resultado = await payment.create({
       body: {
@@ -467,7 +448,7 @@ app.post('/api/pagamento-cartao', async (req, res) => {
         deviceIdEnviado: Boolean(deviceId),
         cpfEnviado: true,
         itensEnviados: dadosAntifraude.items?.length || 0,
-        modoTeste: modoTesteAutorizado
+        emailTeste: payer.email.trim().toLowerCase() === 'test@testuser.com'
       });
     }
 
@@ -495,19 +476,14 @@ app.get('/api/pagamento-status/:id', async (req, res) => {
  
 // Criar pedido (chamado depois que o Pix é aprovado)
 app.post('/api/pedidos', async (req, res) => {
-  const { email, nome, itens, total, endereco, pagamento_id, modo_teste } = req.body;
-  const modoTesteAutorizado = Boolean(modo_teste && adminAutorizado(req));
-
-  if (modo_teste && !modoTesteAutorizado) {
-    return res.status(403).json({ erro: 'Pedido de teste não autorizado.' });
-  }
+  const { email, nome, itens, total, endereco, pagamento_id } = req.body;
  
   try {
     const resultado = await pool.query(
-      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total, pagamento_id, teste)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total, pagamento_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING id`,
-      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), modoTesteAutorizado ? 5 : total, pagamento_id || null, modoTesteAutorizado]
+      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), total, pagamento_id || null]
     );
  
     res.json({ sucesso: true, pedidoId: resultado.rows[0].id });
