@@ -92,12 +92,13 @@ async function garantirColunasPedidos() {
   try {
     await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT`);
     await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pagamento_id TEXT`);
+    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS teste BOOLEAN NOT NULL DEFAULT FALSE`);
   } catch (erro) {
     console.error('Erro ao garantir coluna motivo_cancelamento:', erro);
   }
 }
 
-guardarColunasPedido = garantirColunasPedidos();
+const guardarColunasPedido = garantirColunasPedidos();
 
 function parseJsonField(valor) {
   if (!valor) return valor;
@@ -120,9 +121,18 @@ async function reembolsarPagamento(pagamentoId) {
   return refund.total({ payment_id: pagamentoId });
 }
 
-function autenticarAdmin(req, res, next) {
+function tokenAdminDaRequisicao(req) {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  return header.startsWith('Bearer ') ? header.slice(7) : null;
+}
+
+function adminAutorizado(req) {
+  const token = tokenAdminDaRequisicao(req);
+  return Boolean(token && adminTokens.has(token));
+}
+
+function autenticarAdmin(req, res, next) {
+  const token = tokenAdminDaRequisicao(req);
 
   if (!token || !adminTokens.has(token)) {
     return res.status(401).json({ erro: 'Não autorizado.' });
@@ -229,9 +239,10 @@ app.get('/api/admin/resumo', autenticarAdmin, async (req, res) => {
     const resultado = await pool.query(
       `SELECT
          COUNT(*)::int AS total_pedidos,
-         COALESCE(SUM(CASE WHEN status <> 'cancelado' THEN total ELSE 0 END), 0)::numeric AS faturamento,
-         COUNT(*) FILTER (WHERE status = 'cancelado')::int AS pedidos_cancelados,
-         COUNT(*) FILTER (WHERE status IN ('em_preparacao', 'saiu_para_entrega'))::int AS pedidos_em_andamento
+         COALESCE(SUM(CASE WHEN status <> 'cancelado' AND teste = FALSE THEN total ELSE 0 END), 0)::numeric AS faturamento,
+         COUNT(*) FILTER (WHERE status = 'cancelado' AND teste = FALSE)::int AS pedidos_cancelados,
+         COUNT(*) FILTER (WHERE status IN ('em_preparacao', 'saiu_para_entrega') AND teste = FALSE)::int AS pedidos_em_andamento,
+         COUNT(*) FILTER (WHERE teste = TRUE)::int AS pedidos_teste
        FROM pedidos`
     );
 
@@ -240,7 +251,8 @@ app.get('/api/admin/resumo', autenticarAdmin, async (req, res) => {
       total_pedidos: Number(resumo.total_pedidos),
       faturamento: Number(resumo.faturamento || 0),
       pedidos_cancelados: Number(resumo.pedidos_cancelados),
-      pedidos_em_andamento: Number(resumo.pedidos_em_andamento)
+      pedidos_em_andamento: Number(resumo.pedidos_em_andamento),
+      pedidos_teste: Number(resumo.pedidos_teste)
     });
   } catch (erro) {
     console.error(erro);
@@ -251,7 +263,7 @@ app.get('/api/admin/resumo', autenticarAdmin, async (req, res) => {
 app.get('/api/admin/pedidos', autenticarAdmin, async (req, res) => {
   try {
     const resultado = await pool.query(
-      `SELECT id, cliente_nome, cliente_email, itens, endereco, total, status, motivo_cancelamento, criado_em
+      `SELECT id, cliente_nome, cliente_email, itens, endereco, total, status, motivo_cancelamento, pagamento_id, teste, criado_em
        FROM pedidos
        ORDER BY criado_em DESC`
     );
@@ -322,8 +334,13 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
 
 // Rota para gerar o Pix (Mercado Pago)
 app.post('/api/pagamento-pix', async (req, res) => {
-  const { valor, descricao, email } = req.body;
-  const valorNormalizado = normalizarValor(valor);
+  const { valor, descricao, email, modo_teste } = req.body;
+  const modoTesteAutorizado = Boolean(modo_teste && adminAutorizado(req));
+  const valorNormalizado = modoTesteAutorizado ? 5 : normalizarValor(valor);
+
+  if (modo_teste && !modoTesteAutorizado) {
+    return res.status(403).json({ erro: 'O modo de teste precisa ser iniciado pelo painel administrativo.' });
+  }
 
   if (!process.env.MP_ACCESS_TOKEN) {
     return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
@@ -375,15 +392,21 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     issuer_id,
     payer,
     device_id,
-    order
+    order,
+    modo_teste
   } = req.body || {};
-  const valor = normalizarValor(transaction_amount, 1);
+  const modoTesteAutorizado = Boolean(modo_teste && adminAutorizado(req));
+  const valor = modoTesteAutorizado ? 5 : normalizarValor(transaction_amount, 1);
   const documentoBruto = payer?.identification?.number;
   const documento = textoPagamento(documentoBruto == null ? '' : String(documentoBruto), 20).replace(/\D/g, '');
   const deviceId = textoPagamento(device_id, 255);
 
   if (!process.env.MP_ACCESS_TOKEN) {
     return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
+  }
+
+  if (modo_teste && !modoTesteAutorizado) {
+    return res.status(403).json({ erro: 'O modo de teste precisa ser iniciado pelo painel administrativo.' });
   }
 
   if (valor === null || !token || !payment_method_id || !payer?.email) {
@@ -394,9 +417,21 @@ app.post('/api/pagamento-cartao', async (req, res) => {
     return res.status(400).json({ erro: 'Informe um CPF válido para processar o pagamento.' });
   }
 
+
+  const totalItens = Array.isArray(order?.items)
+    ? order.items.reduce((soma, item) => soma + (Number(item?.unit_price) || 0) * (Number(item?.quantity) || 0), 0)
+    : 0;
+
+  if (!modoTesteAutorizado && Math.abs(totalItens - valor) > 0.009) {
+    return res.status(400).json({ erro: 'O valor do pagamento não corresponde ao total do carrinho.' });
+  }
+
   try {
     const payment = new Payment(client);
-    const dadosAntifraude = montarDadosAntifraude(req, order);
+    const orderPagamento = modoTesteAutorizado
+      ? { ...order, items: [{ id: 'teste-admin', title: 'Pedido de teste administrativo', quantity: 1, unit_price: 5 }] }
+      : order;
+    const dadosAntifraude = montarDadosAntifraude(req, orderPagamento);
     const nomeComprador = dadosAntifraude.payer || {};
     const resultado = await payment.create({
       body: {
@@ -432,7 +467,7 @@ app.post('/api/pagamento-cartao', async (req, res) => {
         deviceIdEnviado: Boolean(deviceId),
         cpfEnviado: true,
         itensEnviados: dadosAntifraude.items?.length || 0,
-        modoTeste: payer.email.trim().toLowerCase() === 'test@testuser.com'
+        modoTeste: modoTesteAutorizado
       });
     }
 
@@ -460,14 +495,19 @@ app.get('/api/pagamento-status/:id', async (req, res) => {
  
 // Criar pedido (chamado depois que o Pix é aprovado)
 app.post('/api/pedidos', async (req, res) => {
-  const { email, nome, itens, total, endereco, pagamento_id } = req.body;
+  const { email, nome, itens, total, endereco, pagamento_id, modo_teste } = req.body;
+  const modoTesteAutorizado = Boolean(modo_teste && adminAutorizado(req));
+
+  if (modo_teste && !modoTesteAutorizado) {
+    return res.status(403).json({ erro: 'Pedido de teste não autorizado.' });
+  }
  
   try {
     const resultado = await pool.query(
-      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total, pagamento_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total, pagamento_id, teste)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id`,
-      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), total, pagamento_id || null]
+      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), modoTesteAutorizado ? 5 : total, pagamento_id || null, modoTesteAutorizado]
     );
  
     res.json({ sucesso: true, pedidoId: resultado.rows[0].id });
@@ -483,7 +523,7 @@ app.get('/api/pedidos/cliente', async (req, res) => {
  
   try {
     const resultado = await pool.query(
-      `SELECT id, itens, total, endereco, status, motivo_cancelamento, criado_em
+      `SELECT id, itens, total, endereco, status, motivo_cancelamento, teste, criado_em
        FROM pedidos
        WHERE cliente_email = $1
        ORDER BY criado_em DESC`,
