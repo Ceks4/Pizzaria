@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <title>Finalizar pedido - LosPizzanitos</title>
   <link rel="stylesheet" href="auth.css">
   <style>
@@ -75,19 +76,21 @@
 <body>
   <header class="topo">
     <div class="marca">
-      <span class="marca-icone" aria-hidden="true">&#127829;</span>
+      <img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true">
       <div>
         <h1>LOSPIZZANITOS</h1>
         <p>Pizzaria sabor caseiro · forno a lenha</p>
       </div>
     </div>
     <nav>
+      <a class="btn-voltar-pagina" href="cardapio.html">&#8592; VOLTAR</a>
       <a href="cardapio.html">CARDÁPIO</a>
     </nav>
   </header>
 
   <main>
     <div class="card">
+      <div class="aviso-teste" id="avisoModoTeste" hidden>Modo de teste: o valor cobrado será R$ 5,00.</div>
       <h2>FINALIZAR PEDIDO</h2>
       <p class="subtitulo">Confirme o endereço de entrega</p>
 
@@ -153,6 +156,9 @@
 
   <script>
     const chaveCarrinho = 'carrinhoPizzaria';
+    const tokenAdminTeste = localStorage.getItem('tokenAdmin');
+    const modoTesteAtivo = sessionStorage.getItem('modoTestePagamento') === '1' && Boolean(tokenAdminTeste);
+    document.getElementById('avisoModoTeste').hidden = !modoTesteAtivo;
     let carrinho = [];
 
     try {
@@ -170,60 +176,7 @@
 
     const listaItens = document.getElementById('listaItens');
     const totalPedido = document.getElementById('totalPedido');
-    const parsePreco = valor => {
-      if (valor === null || valor === undefined || valor === '') return 0;
-
-      const texto = String(valor).trim().replace(/R\$/g, '');
-      if (!texto) return 0;
-
-      if (texto.includes(',') && texto.includes('.')) {
-        return Number(texto.replace(/\./g, '').replace(',', '.'));
-      }
-
-      if (texto.includes(',')) {
-        return Number(texto.replace(',', '.'));
-      }
-
-      if (texto.includes('.')) {
-        const partes = texto.split('.');
-        if (partes.length > 2) {
-          return Number(partes.join(''));
-        }
-        if (partes[1] && partes[1].length <= 2) {
-          return Number(texto);
-        }
-        return Number(texto.replace(/\./g, ''));
-      }
-
-      return Number(texto);
-    };
-    const normalizarCarrinho = lista => {
-      if (!Array.isArray(lista)) return [];
-
-      return lista
-        .filter(item => item && item.nome)
-        .map(item => ({
-          ...item,
-          preco: parsePreco(item.preco),
-          quantidade: Number(item.quantidade) > 0 ? Number(item.quantidade) : 1
-        }))
-        .filter(item => Number(item.preco) > 0);
-    };
-    const limparCarrinhoInvalido = () => {
-      const itemSalvo = localStorage.getItem(chaveCarrinho);
-      if (!itemSalvo) return;
-
-      try {
-        const lista = JSON.parse(itemSalvo);
-        const valido = Array.isArray(lista) && lista.some(item => item && item.nome && Number(parsePreco(item.preco)) > 0);
-        if (!valido) {
-          localStorage.removeItem(chaveCarrinho);
-        }
-      } catch (erro) {
-        localStorage.removeItem(chaveCarrinho);
-      }
-    };
-    const formatarPreco = valor => Number(valor || 0).toLocaleString('pt-BR', {
+    const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL'
     });
@@ -236,16 +189,13 @@
       return resposta.json();
     }
 
-    limparCarrinhoInvalido();
-    const carrinhoNormalizado = normalizarCarrinho(JSON.parse(localStorage.getItem(chaveCarrinho) || '[]'));
-
     let total = 0;
-    if (carrinhoNormalizado.length === 0) {
+    if (carrinho.length === 0) {
       listaItens.innerHTML = '<p style="font-size:0.85rem;color:#7a6a60;">Nenhum item no carrinho.</p>';
     } else {
-      carrinhoNormalizado.forEach(item => {
+      carrinho.forEach(item => {
         const quantidade = Number(item.quantidade) || 0;
-        const preco = parsePreco(item.preco);
+        const preco = Number(item.preco) || 0;
         const subtotal = preco * quantidade;
         total += subtotal;
 
@@ -315,7 +265,7 @@
 
       const resposta = await fetch(`${apiBase}/api/pedidos`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(pedido.modo_teste && tokenAdminTeste ? { Authorization: `Bearer ${tokenAdminTeste}` } : {}) },
         body: JSON.stringify(pedido)
       });
       const dados = await lerResposta(resposta);
@@ -365,7 +315,7 @@
       }
 
       const endereco = Object.fromEntries(new FormData(form).entries());
-      const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+      const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || (modoTesteAtivo ? sessionStorage.getItem('usuarioTestePagamento') : 'null') || 'null');
       btnFinalizar.disabled = true;
       btnFinalizar.textContent = 'REDIRECIONANDO...';
 
@@ -379,7 +329,8 @@
           email: usuario.email,
           itens: carrinho,
           endereco,
-          total
+          total: modoTesteAtivo ? 5 : total,
+          modo_teste: modoTesteAtivo
         }));
 
         localStorage.setItem('enderecoEntrega', JSON.stringify(endereco));
