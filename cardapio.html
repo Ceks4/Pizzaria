@@ -38,8 +38,6 @@
   </div>
 </header>
 
-<div class="aviso-teste-site" id="avisoModoTeste" hidden>Modo de teste administrativo ativo: o checkout cobrará somente R$ 5,00. <button type="button" id="btnEncerrarTeste">Encerrar teste</button></div>
-
 <section class="destaque">
   <div class="container">
     <h2>Cardápio</h2>
@@ -417,17 +415,6 @@
 <div class="carrinho-overlay" id="carrinhoOverlay" hidden></div>
 
 <script>
-  const parametroTeste = new URLSearchParams(window.location.search).get('teste') === '1';
-  const tokenAdminTeste = localStorage.getItem('tokenAdmin');
-  if (parametroTeste && tokenAdminTeste) sessionStorage.setItem('modoTestePagamento', '1');
-  const modoTesteAtivo = sessionStorage.getItem('modoTestePagamento') === '1' && Boolean(tokenAdminTeste);
-  document.getElementById('avisoModoTeste').hidden = !modoTesteAtivo;
-  document.getElementById('btnEncerrarTeste').addEventListener('click', () => {
-    sessionStorage.removeItem('modoTestePagamento');
-    sessionStorage.removeItem('usuarioTestePagamento');
-    window.location.href = 'cardapio.html';
-  });
-
   let usuario = null;
   try {
     usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
