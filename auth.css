@@ -40,6 +40,46 @@ header.topo {
   font-size: 1.55rem;
   line-height: 1;
 }
+
+.marca-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  box-shadow: 0 5px 14px rgba(40, 10, 8, 0.24);
+}
+
+.btn-voltar-pagina {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #f4f1ea;
+  text-decoration: none;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, .55);
+  border-radius: 999px;
+}
+
+.btn-voltar-pagina:hover,
+.btn-voltar-pagina:focus-visible {
+  color: #70231f;
+  background: #fffaf3;
+  text-decoration: none;
+}
+
+.aviso-teste {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border: 1px solid #e6a928;
+  border-radius: 8px;
+  color: #6c4600;
+  background: #fff4cd;
+  text-align: center;
+  font-size: .86rem;
+  font-weight: 700;
+}
  
 .marca h1 {
   font-size: 1.7rem;
