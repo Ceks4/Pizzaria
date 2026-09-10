@@ -47,6 +47,13 @@ nav {
   line-height: 1;
 }
 
+.marca-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  box-shadow: 0 5px 14px rgba(40, 10, 8, 0.24);
+}
+
 nav a {
   color: white;
   text-decoration: none;
