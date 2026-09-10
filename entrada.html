@@ -6,8 +6,9 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <title>Los Pizzanitos</title>
     <link rel="stylesheet" href="entrada.css?v=3" />
+    <link rel="stylesheet" href="comic.css?v=1" />
   </head>
-  <body>
+  <body class="home-page">
     <header>
       <nav class="container">
         <div class="marca">
@@ -28,20 +29,23 @@
 
     <main>
       <section id="inicio" class="hero">
-        <div class="container">
-          <span class="hero-selo">Forno a lenha · sabor caseiro</span>
-          <h1>Pizza quente, sabor que conquista</h1>
-          <p>Massas frescas, ingredientes selecionados e atendimento com carinho.</p>
-          <div class="hero-acoes">
-            <a href="cardapio.html" class="btn-cardapio">Fazer meu pedido</a>
-            <a href="#cardapio" class="btn-cardapio btn-claro">Ver destaques</a>
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <span class="hero-selo">Forno ligado · fome detectada</span>
+            <h1>Pizza em modo turbo</h1>
+            <p>Massa artesanal, ingredientes de verdade e sabor que chega sem enrolação.</p>
+            <div class="hero-acoes">
+              <a href="cardapio.html" class="btn-cardapio">Montar meu pedido</a>
+              <a href="#cardapio" class="btn-cardapio btn-claro">Ver os destaques</a>
+            </div>
+            <ul class="hero-beneficios"><li>Ingredientes frescos</li><li>Massa artesanal</li><li>Entrega acompanhada</li></ul>
           </div>
-          <ul class="hero-beneficios"><li>Ingredientes frescos</li><li>Massa artesanal</li><li>Entrega acompanhada</li></ul>
+          <div class="hero-art" role="img" aria-label="Pizza artesanal saindo do forno"><span>Sabor máximo!</span></div>
         </div>
       </section>
 
       <section id="cardapio" class="container">
-        <h2>Cardápio</h2>
+        <h2 data-number="01">Escolhas do chefe</h2>
         <div class="cardapio">
           <article class="pizza">
             <h3>Margherita</h3>
@@ -64,7 +68,7 @@
       </section>
 
       <section id="sobre" class="container">
-        <h2>Sobre nós</h2>
+        <h2 data-number="02">Nossa base</h2>
         <p>
           Somos uma pizzaria com foco em sabor, qualidade e atendimento acolhedor.
           Nossa massa é preparada diariamente para garantir uma experiência deliciosa.
@@ -72,7 +76,7 @@
       </section>
 
       <section id="contato" class="container">
-        <h2>Contato</h2>
+        <h2 data-number="03">Chama a equipe</h2>
         <div class="contato-grade">
           <p><strong>Endereço</strong><br>Rua das Oliveiras, 120 – Centro</p>
           <p><strong>Pedidos</strong><br>(11) 99999-9999</p>
