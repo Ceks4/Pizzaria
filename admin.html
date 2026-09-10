@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <title>Painel administrativo - LosPizzanitos</title>
   <link rel="stylesheet" href="auth.css">
   <style>
@@ -10,8 +11,11 @@
     .painel { width: 100%; }
     .painel-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
     .painel-cabecalho h2 { margin: 0; }
+    .acoes-painel { display: flex; flex-wrap: wrap; gap: 8px; }
     .btn-secundario { border: 1px solid #a0522d; border-radius: 8px; background: transparent; color: #a0522d; padding: 10px 14px; font-weight: 700; cursor: pointer; }
     .btn-secundario:hover { background: #a0522d; color: #fff; }
+    .btn-teste { border-color: #bd7b00; color: #805200; background: #fff4cd; }
+    .btn-teste:hover { border-color: #805200; background: #805200; }
     .tabela-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; min-width: 680px; }
     th, td { padding: 13px 10px; border-bottom: 1px solid #e0d8cc; text-align: left; vertical-align: top; font-size: .86rem; }
@@ -20,17 +24,25 @@
     .detalhes { white-space: pre-line; }
     .vazio { color: #7a6a60; padding: 24px 0; }
     .status-select { border: 1px solid #e0d8cc; border-radius: 6px; padding: 8px; color: #3a2a24; background: #faf8f4; }
-    .filtros { display: flex; gap: 10px; margin-bottom: 18px; }
+    .filtros { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
     .filtros input, .filtros select { margin: 0; }
     .filtros input { flex: 1; }
+    .resumo-grid { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .resumo-card { padding: 14px 16px; border: 1px solid #e0d8cc; border-radius: 10px; background: #fffaf5; }
+    .resumo-card small { display: block; color: #7a6a60; text-transform: uppercase; letter-spacing: .08em; }
+    .resumo-card strong { display: block; margin-top: 8px; font-size: 1.25rem; color: #5c1f1f; }
+    .badge { display: inline-flex; margin-top: 5px; padding: 3px 7px; border-radius: 999px; background: #efe3d5; color: #5c1f1f; font-size: .68rem; font-weight: 800; }
+    .badge.teste { background: #fff0b8; color: #744b00; }
+    .atualizacao { color: #7a6a60; font-size: .76rem; margin: -8px 0 14px; }
     #painelConteudo[hidden], #loginAdmin[hidden] { display: none; }
-    @media (max-width: 600px) { .painel-cabecalho { align-items: flex-start; flex-direction: column; } }
+    @media (max-width: 900px) { .resumo-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); } }
+    @media (max-width: 600px) { .painel-cabecalho { align-items: flex-start; flex-direction: column; } .resumo-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <header class="topo">
-    <div class="marca"><span class="marca-icone" aria-hidden="true">&#127829;</span><div><h1>LOSPIZZANITOS</h1><p>Painel administrativo</p></div></div>
-    <nav><a href="cardapio.html">CARDÁPIO</a></nav>
+    <div class="marca"><img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true"><div><h1>LOSPIZZANITOS</h1><p>Painel administrativo</p></div></div>
+    <nav><a class="btn-voltar-pagina" href="cardapio.html">&#8592; VOLTAR</a><a href="cardapio.html">CARDÁPIO</a></nav>
   </header>
   <main>
     <div class="card painel">
@@ -46,10 +58,11 @@
       </section>
 
       <section id="painelConteudo" hidden>
-        <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><div><button class="btn-secundario" id="btnAtualizar" type="button">ATUALIZAR</button> <button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div></div>
-        <div id="resumoAdmin" class="filtros" style="display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;"></div>
+        <div class="painel-cabecalho"><h2>PEDIDOS RECEBIDOS</h2><div class="acoes-painel"><button class="btn-secundario btn-teste" id="btnModoTeste" type="button">TESTAR PAGAMENTO R$ 5</button><button class="btn-secundario" id="btnExportar" type="button">EXPORTAR CSV</button><button class="btn-secundario" id="btnAutoAtualizar" type="button">AUTO: LIGADO</button><button class="btn-secundario" id="btnAtualizar" type="button">ATUALIZAR</button><button class="btn-secundario" id="btnSairAdmin" type="button">SAIR</button></div></div>
+        <div id="resumoAdmin" class="resumo-grid"></div>
+        <p class="atualizacao" id="ultimaAtualizacao">Aguardando atualização...</p>
         <p class="mensagem" id="mensagemPedidos" role="status"></p>
-        <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar por cliente, e-mail ou número"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select></div>
+        <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar por cliente, e-mail ou número"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select><select id="filtroTipo"><option value="">Reais e testes</option><option value="real">Somente reais</option><option value="teste">Somente testes</option></select></div>
         <div class="tabela-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Entrega</th><th>Total</th><th>Status</th><th>Data</th></tr></thead><tbody id="listaPedidos"></tbody></table></div>
       </section>
     </div>
@@ -64,6 +77,8 @@
     const painelConteudo = document.getElementById('painelConteudo');
     const tokenSalvo = () => localStorage.getItem('tokenAdmin');
     let pedidos = [];
+    let autoAtualizar = true;
+    let intervaloAtualizacao = null;
     const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     async function lerResposta(resposta) {
@@ -98,18 +113,27 @@
       lista.innerHTML = '';
       const busca = document.getElementById('buscaPedidos').value.toLowerCase().trim();
       const status = document.getElementById('filtroStatus').value;
+      const tipo = document.getElementById('filtroTipo').value;
       const filtrados = pedidos.filter(pedido => {
-        const correspondeBusca = !busca || String(pedido.id).includes(busca) || pedido.cliente_nome.toLowerCase().includes(busca) || (pedido.cliente_email || '').toLowerCase().includes(busca);
-        return correspondeBusca && (!status || pedido.status === status);
+        const correspondeBusca = !busca || String(pedido.id).includes(busca) || (pedido.cliente_nome || '').toLowerCase().includes(busca) || (pedido.cliente_email || '').toLowerCase().includes(busca);
+        const correspondeTipo = !tipo || (tipo === 'teste' ? pedido.teste : !pedido.teste);
+        return correspondeBusca && correspondeTipo && (!status || pedido.status === status);
       });
       if (filtrados.length === 0) { lista.innerHTML = '<tr><td class="vazio" colspan="7">Nenhum pedido encontrado.</td></tr>'; return; }
       filtrados.forEach(pedido => {
-        const itens = pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join('\n');
-        const endereco = pedido.endereco;
+        const itens = (Array.isArray(pedido.itens) ? pedido.itens : []).map(item => `${item.quantidade}x ${item.nome}`).join('\n') || 'Sem itens';
+        const endereco = pedido.endereco || {};
         const destino = `${endereco.endereco}, ${endereco.numero}\n${endereco.bairro} - ${endereco.cidade}/${endereco.estado}\nCEP: ${endereco.cep}`;
         const linha = document.createElement('tr');
         const clienteTexto = `${pedido.cliente_nome}\n${pedido.cliente_email || ''}${pedido.status === 'cancelado' && pedido.motivo_cancelamento ? `\nMotivo: ${pedido.motivo_cancelamento}` : ''}`;
-        [pedido.id, clienteTexto, itens, destino, formatarPreco(pedido.total)].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
+        const celulaPedido = document.createElement('td');
+        celulaPedido.textContent = `#${pedido.id}`;
+        const badge = document.createElement('span');
+        badge.className = `badge${pedido.teste ? ' teste' : ''}`;
+        badge.textContent = pedido.teste ? 'TESTE' : 'REAL';
+        celulaPedido.append(document.createElement('br'), badge);
+        linha.appendChild(celulaPedido);
+        [clienteTexto, itens, destino, formatarPreco(pedido.total)].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
         const celulaStatus = document.createElement('td');
         const seletorStatus = document.createElement('select');
         seletorStatus.className = 'status-select';
@@ -149,20 +173,13 @@
         if (!resposta.ok) throw new Error(dados.erro);
 
         const resumo = document.getElementById('resumoAdmin');
-        resumo.innerHTML = `
-          <div style="padding: 12px 16px; border: 1px solid #e0d8cc; border-radius: 10px; background: #fffaf5;">
-            <small style="display: block; color: #7a6a60; text-transform: uppercase; letter-spacing: .08em;">Faturamento</small>
-            <strong style="display: block; margin-top: 8px; font-size: 1.25rem; color: #5c1f1f;">${formatarPreco(dados.faturamento || 0)}</strong>
-          </div>
-          <div style="padding: 12px 16px; border: 1px solid #e0d8cc; border-radius: 10px; background: #fffaf5;">
-            <small style="display: block; color: #7a6a60; text-transform: uppercase; letter-spacing: .08em;">Pedidos</small>
-            <strong style="display: block; margin-top: 8px; font-size: 1.25rem; color: #5c1f1f;">${dados.total_pedidos || 0}</strong>
-          </div>
-          <div style="padding: 12px 16px; border: 1px solid #e0d8cc; border-radius: 10px; background: #fffaf5;">
-            <small style="display: block; color: #7a6a60; text-transform: uppercase; letter-spacing: .08em;">Cancelados</small>
-            <strong style="display: block; margin-top: 8px; font-size: 1.25rem; color: #5c1f1f;">${dados.pedidos_cancelados || 0}</strong>
-          </div>
-        `;
+        resumo.innerHTML = [
+          ['Faturamento real', formatarPreco(dados.faturamento || 0)],
+          ['Todos os pedidos', dados.total_pedidos || 0],
+          ['Em andamento', dados.pedidos_em_andamento || 0],
+          ['Cancelados', dados.pedidos_cancelados || 0],
+          ['Pedidos de teste', dados.pedidos_teste || 0]
+        ].map(([rotulo, valor]) => `<div class="resumo-card"><small>${rotulo}</small><strong>${valor}</strong></div>`).join('');
       } catch (erro) {
         document.getElementById('mensagemPedidos').textContent = erro.message || 'Não foi possível carregar o resumo.';
         document.getElementById('mensagemPedidos').className = 'mensagem erro';
@@ -178,11 +195,35 @@
         if (!resposta.ok) throw new Error(dados.erro);
         pedidos = dados.pedidos;
         renderizarPedidos();
+        mensagem.textContent = '';
+        document.getElementById('ultimaAtualizacao').textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
       } catch (erro) { mensagem.textContent = erro.message || 'Não foi possível carregar os pedidos.'; mensagem.className = 'mensagem erro'; }
     }
     document.getElementById('buscaPedidos').addEventListener('input', renderizarPedidos);
     document.getElementById('filtroStatus').addEventListener('change', renderizarPedidos);
+    document.getElementById('filtroTipo').addEventListener('change', renderizarPedidos);
     document.getElementById('btnAtualizar').addEventListener('click', () => { carregarResumo(); carregarPedidos(); });
+    document.getElementById('btnModoTeste').addEventListener('click', () => {
+      sessionStorage.setItem('modoTestePagamento', '1');
+      sessionStorage.setItem('usuarioTestePagamento', JSON.stringify({ nome: 'Teste Administrativo', email: 'test@testuser.com' }));
+      sessionStorage.removeItem('carrinhoPizzaria');
+      localStorage.removeItem('carrinhoPizzaria');
+      window.location.href = 'cardapio.html?teste=1';
+    });
+    document.getElementById('btnExportar').addEventListener('click', () => {
+      const linhas = [['Pedido', 'Tipo', 'Cliente', 'Email', 'Total', 'Status', 'Data']];
+      pedidos.forEach(pedido => linhas.push([pedido.id, pedido.teste ? 'Teste' : 'Real', pedido.cliente_nome || '', pedido.cliente_email || '', pedido.total, pedido.status, new Date(pedido.criado_em).toLocaleString('pt-BR')]));
+      const csv = linhas.map(linha => linha.map(valor => `"${String(valor).replace(/"/g, '""')}"`).join(';')).join('\n');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+      link.download = `pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+    document.getElementById('btnAutoAtualizar').addEventListener('click', evento => {
+      autoAtualizar = !autoAtualizar;
+      evento.currentTarget.textContent = `AUTO: ${autoAtualizar ? 'LIGADO' : 'DESLIGADO'}`;
+    });
     async function atualizarStatus(pedidoId, status, motivoCancelamento = null) {
       try {
         const resposta = await fetch(`${API}/api/admin/pedidos/${pedidoId}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenSalvo()}` }, body: JSON.stringify({ status, motivo_cancelamento: motivoCancelamento }) });
@@ -197,7 +238,8 @@
         document.getElementById('mensagemPedidos').className = 'mensagem erro';
       }
     }
-    document.getElementById('btnSairAdmin').addEventListener('click', () => { localStorage.removeItem('tokenAdmin'); mostrarLogin(); });
+    document.getElementById('btnSairAdmin').addEventListener('click', () => { localStorage.removeItem('tokenAdmin'); sessionStorage.removeItem('modoTestePagamento'); sessionStorage.removeItem('usuarioTestePagamento'); mostrarLogin(); });
+    intervaloAtualizacao = setInterval(() => { if (autoAtualizar && !painelConteudo.hidden) { carregarResumo(); carregarPedidos(); } }, 30000);
     if (tokenSalvo()) mostrarPainel();
   </script>
 </body>
