@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <title>Status do pedido - LosPizzanitos</title>
   <link rel="stylesheet" href="auth.css">
   <style>
@@ -20,13 +21,14 @@
     .btn-cancelar { margin-top: 16px; border: 1px solid #b02a2a; border-radius: 6px; padding: 9px 12px; background: transparent; color: #b02a2a; cursor: pointer; font-weight: 600; }
     .btn-cancelar:hover { background: #b02a2a; color: #fff; }
     .btn-cancelar:disabled { opacity: .55; cursor: not-allowed; }
+    .badge-teste { display: inline-flex; margin-left: 8px; padding: 3px 8px; border-radius: 999px; color: #744b00; background: #fff0b8; font-size: .7rem; vertical-align: middle; }
     @media (max-width: 480px) { .linha-status { grid-template-columns: 1fr; } .etapa { text-align: left; } }
   </style>
 </head>
 <body>
   <header class="topo">
-    <div class="marca"><span class="marca-icone" aria-hidden="true">&#127829;</span><div><h1>LOSPIZZANITOS</h1><p>Acompanhe seu pedido</p></div></div>
-    <nav><a href="cardapio.html">CARDÁPIO</a></nav>
+    <div class="marca"><img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true"><div><h1>LOSPIZZANITOS</h1><p>Acompanhe seu pedido</p></div></div>
+    <nav><a class="btn-voltar-pagina" href="cardapio.html">&#8592; VOLTAR</a><a href="cardapio.html">CARDÁPIO</a></nav>
   </header>
   <main>
     <div class="card">
@@ -50,7 +52,7 @@
     const mensagem = document.getElementById('mensagem');
     let emailCliente = null;
     try {
-      emailCliente = JSON.parse(localStorage.getItem('usuarioLogado') || 'null')?.email || null;
+      emailCliente = JSON.parse(localStorage.getItem('usuarioLogado') || sessionStorage.getItem('usuarioTestePagamento') || 'null')?.email || null;
     } catch (erro) {
       emailCliente = null;
     }
@@ -77,7 +79,7 @@
         const podeCancelar = pedido.status === 'em_preparacao';
         const motivo = pedido.motivo_cancelamento || pedido.motivoCancelamento || pedido.motivo || 'Pedido cancelado pelo estabelecimento.';
         const motivoCancelamento = pedido.status === 'cancelado' ? `<div class="resumo-cliente"><strong>Motivo do cancelamento:</strong> ${escaparHtml(motivo)}</div>` : '';
-        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">${pedido.status === 'cancelado' ? 'Cancelado' : 'Finalizado'}</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco || ''}, ${endereco.numero || ''}, ${endereco.cidade || ''}/${endereco.estado || ''}`.replace(/, ,/g, ',').replace(/\s+,\s+/g, ', ').replace(/, $/, ''))}</div>${motivoCancelamento}${podeCancelar ? '<button type="button" class="btn-cancelar">Cancelar pedido</button>' : ''}`;
+        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}${pedido.teste ? '<span class="badge-teste">TESTE</span>' : ''}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">${pedido.status === 'cancelado' ? 'Cancelado' : 'Finalizado'}</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco || ''}, ${endereco.numero || ''}, ${endereco.cidade || ''}/${endereco.estado || ''}`.replace(/, ,/g, ',').replace(/\s+,\s+/g, ', ').replace(/, $/, ''))}</div>${motivoCancelamento}${podeCancelar ? '<button type="button" class="btn-cancelar">Cancelar pedido</button>' : ''}`;
         if (podeCancelar) bloco.querySelector('.btn-cancelar').addEventListener('click', () => cancelarPedido(pedido.id, bloco));
         lista.appendChild(bloco);
       });
