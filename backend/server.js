@@ -127,13 +127,17 @@ const CONFIG_ENTREGA_PADRAO = {
   ativo: true,
   cidade: 'São Paulo',
   estado: 'SP',
+  centro_cep: '08451000',
+  centro_lat: -23.5349716,
+  centro_lon: -46.400957,
+  raio_km: 10,
   dias: [0, 2, 3, 4, 5, 6],
   abertura: '18:00',
   fechamento: '23:30',
-  zonas: [
-    { nome: 'Região próxima', cep_inicio: '01000000', cep_fim: '01999999', taxa: 5, prazo_min: 40, prazo_max: 55 },
-    { nome: 'Região intermediária', cep_inicio: '02000000', cep_fim: '03999999', taxa: 10, prazo_min: 45, prazo_max: 65 },
-    { nome: 'Região limite', cep_inicio: '04000000', cep_fim: '05999999', taxa: 15, prazo_min: 55, prazo_max: 75 }
+  zonas_distancia: [
+    { nome: 'Até 3 km', distancia_min: 0, distancia_max: 3, taxa: 5, prazo_min: 30, prazo_max: 45 },
+    { nome: 'De 3 a 7 km', distancia_min: 3, distancia_max: 7, taxa: 10, prazo_min: 40, prazo_max: 60 },
+    { nome: 'De 7 a 10 km', distancia_min: 7, distancia_max: 10, taxa: 15, prazo_min: 55, prazo_max: 80 }
   ]
 };
 
@@ -348,7 +352,18 @@ async function validarCredenciaisAdmin(usuario, senha) {
 async function obterConfigEntrega() {
   await guardarColunasPedido;
   const resultado = await pool.query(`SELECT valor FROM configuracoes_app WHERE chave = 'entrega' LIMIT 1`);
-  return resultado.rows[0]?.valor || CONFIG_ENTREGA_PADRAO;
+  const salva = resultado.rows[0]?.valor || {};
+  return {
+    ...CONFIG_ENTREGA_PADRAO,
+    ...salva,
+    centro_cep: salva.centro_cep || CONFIG_ENTREGA_PADRAO.centro_cep,
+    centro_lat: Number(salva.centro_lat ?? CONFIG_ENTREGA_PADRAO.centro_lat),
+    centro_lon: Number(salva.centro_lon ?? CONFIG_ENTREGA_PADRAO.centro_lon),
+    raio_km: Number(salva.raio_km ?? CONFIG_ENTREGA_PADRAO.raio_km),
+    zonas_distancia: Array.isArray(salva.zonas_distancia) && salva.zonas_distancia.length
+      ? salva.zonas_distancia
+      : CONFIG_ENTREGA_PADRAO.zonas_distancia
+  };
 }
 
 function horarioSaoPaulo() {
@@ -365,6 +380,51 @@ function minutosHorario(valor) {
   return hora * 60 + minuto;
 }
 
+const cacheGeocodificacao = new Map();
+
+function distanciaEmKm(origem, destino) {
+  const rad = graus => graus * Math.PI / 180;
+  const deltaLat = rad(destino.lat - origem.lat);
+  const deltaLon = rad(destino.lon - origem.lon);
+  const a = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(rad(origem.lat)) * Math.cos(rad(destino.lat)) * Math.sin(deltaLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function geocodificarCep(cepInformado) {
+  const cep = String(cepInformado || '').replace(/\D/g, '');
+  if (cep.length !== 8) throw new Error('CEP inválido.');
+  // O ponto médio do setor postal evita enviar rua e número do cliente a terceiros
+  // e também cobre CEPs individuais que não existem no índice geográfico.
+  const setorCep = `${cep.slice(0, 5)}000`;
+  const emCache = cacheGeocodificacao.get(setorCep);
+  if (emCache && emCache.expiraEm > Date.now()) return emCache.coordenadas;
+
+  const url = new URL('https://nominatim.openstreetmap.org/search');
+  url.searchParams.set('format', 'jsonv2');
+  url.searchParams.set('countrycodes', 'br');
+  url.searchParams.set('postalcode', `${setorCep.slice(0, 5)}-${setorCep.slice(5)}`);
+  url.searchParams.set('limit', '1');
+  let resposta;
+  try {
+    resposta = await fetch(url, {
+      headers: { 'User-Agent': 'LosPizzanitos/1.0 (https://ceks4.github.io/Pizzaria/)', 'Accept-Language': 'pt-BR' },
+      signal: AbortSignal.timeout(7000)
+    });
+  } catch (_erro) {
+    throw new Error('Não foi possível calcular a distância agora. Tente novamente.');
+  }
+  if (!resposta.ok) throw new Error('Não foi possível calcular a distância agora. Tente novamente.');
+  const locais = await resposta.json();
+  const local = locais[0];
+  const coordenadas = { lat: Number(local?.lat), lon: Number(local?.lon) };
+  if (!Number.isFinite(coordenadas.lat) || !Number.isFinite(coordenadas.lon)) {
+    throw new Error('Não foi possível localizar esse CEP para calcular a entrega.');
+  }
+  cacheGeocodificacao.set(setorCep, { coordenadas, expiraEm: Date.now() + 24 * 60 * 60_000 });
+  return coordenadas;
+}
+
 async function calcularEntrega(endereco, ignorarHorario = false) {
   const config = await obterConfigEntrega();
   if (!config.ativo) throw new Error('As entregas estão temporariamente pausadas.');
@@ -374,13 +434,23 @@ async function calcularEntrega(endereco, ignorarHorario = false) {
   if (cep.length !== 8 || cidade !== normalizarTexto(config.cidade) || estado !== String(config.estado).toUpperCase()) {
     throw new Error(`No momento entregamos somente em ${config.cidade}/${config.estado}.`);
   }
-  const zona = (config.zonas || []).find(item => cep >= String(item.cep_inicio) && cep <= String(item.cep_fim));
-  if (!zona) throw new Error('Este CEP está fora da nossa área de entrega.');
+  const destino = await geocodificarCep(cep);
+  const distancia = distanciaEmKm(
+    { lat: Number(config.centro_lat), lon: Number(config.centro_lon) },
+    destino
+  );
+  if (!Number.isFinite(distancia) || distancia > Number(config.raio_km)) {
+    const distanciaTexto = Number.isFinite(distancia) ? ` (${distancia.toFixed(1).replace('.', ',')} km)` : '';
+    throw new Error(`Este endereço está fora do limite de ${Number(config.raio_km)} km${distanciaTexto}.`);
+  }
+  const zona = (config.zonas_distancia || []).find(item => distancia >= Number(item.distancia_min) && distancia <= Number(item.distancia_max));
+  if (!zona) throw new Error('Não há uma taxa cadastrada para essa distância.');
   const agora = horarioSaoPaulo();
   const aberto = (config.dias || []).includes(agora.dia) && agora.minutos >= minutosHorario(config.abertura) && agora.minutos <= minutosHorario(config.fechamento);
   if (!ignorarHorario && !aberto) throw new Error(`Estamos fechados. Pedidos: ${config.abertura} às ${config.fechamento}.`);
   return {
     zona: textoSeguro(zona.nome, 80),
+    distancia_km: Number(distancia.toFixed(1)),
     taxa: Number(zona.taxa),
     prazo_min: Number(zona.prazo_min),
     prazo_max: Number(zona.prazo_max),
@@ -477,7 +547,7 @@ app.get('/api/entrega/config', async (_req, res) => {
     const config = await obterConfigEntrega();
     const agora = horarioSaoPaulo();
     const aberto = config.ativo && config.dias.includes(agora.dia) && agora.minutos >= minutosHorario(config.abertura) && agora.minutos <= minutosHorario(config.fechamento);
-    return res.json({ cidade: config.cidade, estado: config.estado, abertura: config.abertura, fechamento: config.fechamento, dias: config.dias, aberto });
+    return res.json({ cidade: config.cidade, estado: config.estado, centro_cep: config.centro_cep, raio_km: config.raio_km, abertura: config.abertura, fechamento: config.fechamento, dias: config.dias, aberto });
   } catch (_erro) { return res.status(500).json({ erro: 'Não foi possível consultar o horário.' }); }
 });
 
@@ -563,15 +633,20 @@ app.put('/api/admin/config-entrega', autenticarAdmin, async (req, res) => {
     if (!config || !textoSeguro(config.cidade, 80) || !/^[A-Z]{2}$/.test(String(config.estado || '').toUpperCase())) throw new Error('Cidade ou estado inválido.');
     if (!/^\d{2}:\d{2}$/.test(config.abertura) || !/^\d{2}:\d{2}$/.test(config.fechamento)) throw new Error('Horário inválido.');
     if (!Array.isArray(config.dias) || !config.dias.every(dia => Number.isInteger(Number(dia)) && Number(dia) >= 0 && Number(dia) <= 6)) throw new Error('Dias de funcionamento inválidos.');
-    if (!Array.isArray(config.zonas) || !config.zonas.length || config.zonas.length > 30) throw new Error('Cadastre pelo menos uma região de entrega.');
-    const zonas = config.zonas.map(zona => {
-      const inicio = String(zona.cep_inicio || '').replace(/\D/g, '');
-      const fim = String(zona.cep_fim || '').replace(/\D/g, '');
+    const centroCep = String(config.centro_cep || '').replace(/\D/g, '');
+    const raioKm = Number(config.raio_km);
+    if (centroCep.length !== 8 || !Number.isFinite(raioKm) || raioKm < 1 || raioKm > 30) throw new Error('Informe um CEP central e um limite entre 1 e 30 km.');
+    if (!Array.isArray(config.zonas_distancia) || !config.zonas_distancia.length || config.zonas_distancia.length > 10) throw new Error('Cadastre pelo menos uma faixa de distância.');
+    const zonasDistancia = config.zonas_distancia.map(zona => {
+      const distanciaMin = Number(zona.distancia_min), distanciaMax = Number(zona.distancia_max);
       const taxa = Number(zona.taxa), prazoMin = Number(zona.prazo_min), prazoMax = Number(zona.prazo_max);
-      if (inicio.length !== 8 || fim.length !== 8 || inicio > fim || !Number.isFinite(taxa) || taxa < 0 || prazoMin < 10 || prazoMax < prazoMin) throw new Error(`Região inválida: ${zona.nome || 'sem nome'}.`);
-      return { nome: textoSeguro(zona.nome, 80), cep_inicio: inicio, cep_fim: fim, taxa: Number(taxa.toFixed(2)), prazo_min: Math.trunc(prazoMin), prazo_max: Math.trunc(prazoMax) };
+      if (!Number.isFinite(distanciaMin) || !Number.isFinite(distanciaMax) || distanciaMin < 0 || distanciaMax <= distanciaMin || distanciaMax > raioKm || !Number.isFinite(taxa) || taxa < 0 || prazoMin < 10 || prazoMax < prazoMin) throw new Error(`Faixa inválida: ${zona.nome || 'sem nome'}.`);
+      return { nome: textoSeguro(zona.nome, 80), distancia_min: distanciaMin, distancia_max: distanciaMax, taxa: Number(taxa.toFixed(2)), prazo_min: Math.trunc(prazoMin), prazo_max: Math.trunc(prazoMax) };
     });
-    const normalizada = { ativo: config.ativo !== false, cidade: textoSeguro(config.cidade, 80), estado: String(config.estado).toUpperCase(), dias: [...new Set(config.dias.map(Number))], abertura: config.abertura, fechamento: config.fechamento, zonas };
+    const centro = centroCep === CONFIG_ENTREGA_PADRAO.centro_cep
+      ? { lat: CONFIG_ENTREGA_PADRAO.centro_lat, lon: CONFIG_ENTREGA_PADRAO.centro_lon }
+      : await geocodificarCep(centroCep);
+    const normalizada = { ativo: config.ativo !== false, cidade: textoSeguro(config.cidade, 80), estado: String(config.estado).toUpperCase(), centro_cep: centroCep, centro_lat: centro.lat, centro_lon: centro.lon, raio_km: raioKm, dias: [...new Set(config.dias.map(Number))], abertura: config.abertura, fechamento: config.fechamento, zonas_distancia: zonasDistancia.sort((a, b) => a.distancia_min - b.distancia_min) };
     await pool.query(`INSERT INTO configuracoes_app (chave, valor, atualizado_em) VALUES ('entrega', $1::jsonb, NOW()) ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = NOW()`, [JSON.stringify(normalizada)]);
     return res.json({ sucesso: true, config: normalizada });
   } catch (erro) { return res.status(400).json({ erro: erro.message || 'Configuração inválida.' }); }
