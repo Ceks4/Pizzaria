@@ -585,6 +585,48 @@ button.btn-principal:hover,
   transform: rotate(2deg);
 }
 
+
+.menu-page .campo-tamanho {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 3px solid var(--ink);
+}
+
+.menu-page .campo-tamanho label {
+  margin: 0;
+  color: var(--purple);
+  font-size: .72rem;
+}
+
+.menu-page .seletor-tamanho {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--white);
+  border: 3px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--yellow);
+  font-size: .86rem;
+  font-weight: 800;
+}
+
+.menu-page .dica-tamanho {
+  min-height: 1.2em;
+  color: #4d475a;
+  font-size: .75rem;
+  font-weight: 800;
+}
+
+.menu-page .botao-comprar:disabled {
+  color: #605b69;
+  background: #d8d3df;
+  box-shadow: 3px 3px 0 #85808f;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .menu-page .etiqueta {
   color: var(--white);
   background: var(--purple);
