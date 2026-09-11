@@ -12,10 +12,6 @@ app.use(cors());
  
 const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
 
-function credenciaisMercadoPagoConfiguradas() {
-  return Boolean(process.env.MP_ACCESS_TOKEN && process.env.MP_PUBLIC_KEY);
-}
-
 function normalizarValor(valor, minimo = 0.01) {
   const numero = Number(valor);
   if (!Number.isFinite(numero) || numero < minimo) return null;
@@ -27,59 +23,6 @@ function normalizarValor(valor, minimo = 0.01) {
 function extrairErroMercadoPago(erro) {
   const causa = Array.isArray(erro?.cause) ? erro.cause[0] : erro?.cause;
   return causa?.description || causa?.message || erro?.message || null;
-}
-
-function textoPagamento(valor, limite = 120) {
-  return typeof valor === 'string' ? valor.trim().slice(0, limite) : '';
-}
-
-function montarDadosAntifraude(req, order) {
-  const nomeCompleto = textoPagamento(order?.buyer_name, 120);
-  const partesNome = nomeCompleto.split(/\s+/).filter(Boolean);
-  const firstName = partesNome.shift() || '';
-  const lastName = partesNome.join(' ');
-  const endereco = order?.address || {};
-  const streetName = textoPagamento(endereco.endereco, 120);
-  const streetNumber = textoPagamento(endereco.numero, 20);
-  const zipCode = textoPagamento(endereco.cep, 12).replace(/[^0-9]/g, '');
-
-  const items = Array.isArray(order?.items)
-    ? order.items.slice(0, 50).map((item, indice) => {
-        const quantity = Math.max(1, Math.min(99, Math.trunc(Number(item?.quantity) || 1)));
-        const unitPrice = normalizarValor(item?.unit_price, 0.01);
-        const title = textoPagamento(item?.title, 120);
-        if (!unitPrice || !title) return null;
-
-        return {
-          id: textoPagamento(String(item?.id ?? indice), 50),
-          title,
-          description: title,
-          category_id: 'food',
-          quantity,
-          currency_id: 'BRL',
-          unit_price: unitPrice,
-          type: 'physical'
-        };
-      }).filter(Boolean)
-    : [];
-
-  const payer = {
-    ...(firstName ? { first_name: firstName } : {}),
-    ...(lastName ? { last_name: lastName } : {}),
-    ...(streetName || zipCode ? {
-      address: {
-        ...(zipCode ? { zip_code: zipCode } : {}),
-        ...(streetName ? { street_name: streetName } : {}),
-        ...(streetNumber ? { street_number: streetNumber } : {})
-      }
-    } : {})
-  };
-
-  return {
-    ...(req.ip ? { ip_address: req.ip.replace(/^::ffff:/, '') } : {}),
-    ...(items.length ? { items } : {}),
-    ...(Object.keys(payer).length ? { payer } : {})
-  };
 }
 
 const ADMIN_DEFAULT = {
@@ -123,6 +66,8 @@ async function garantirColunasPedidos() {
     await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT`);
     await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pagamento_id TEXT`);
     await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS teste BOOLEAN NOT NULL DEFAULT FALSE`);
+    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS forma_pagamento TEXT`);
+    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS troco_para NUMERIC(10, 2)`);
   } catch (erro) {
     console.error('Erro ao garantir coluna motivo_cancelamento:', erro);
   }
@@ -175,12 +120,11 @@ function parseJsonField(valor) {
 }
 
 async function reembolsarPagamento(pagamentoId) {
-  if (!pagamentoId) {
-    throw new Error('Este pedido não possui um pagamento vinculado para estorno.');
-  }
+  if (!pagamentoId) return false;
 
   const refund = new PaymentRefund(client);
-  return refund.total({ payment_id: pagamentoId });
+  await refund.total({ payment_id: pagamentoId });
+  return true;
 }
 
 function tokenAdminDaRequisicao(req) {
@@ -336,7 +280,7 @@ app.get('/api/admin/resumo', autenticarAdmin, async (req, res) => {
 app.get('/api/admin/pedidos', autenticarAdmin, async (req, res) => {
   try {
     const resultado = await pool.query(
-      `SELECT id, cliente_nome, cliente_email, itens, endereco, total, status, motivo_cancelamento, pagamento_id, teste, criado_em
+      `SELECT id, cliente_nome, cliente_email, itens, endereco, total, status, motivo_cancelamento, pagamento_id, forma_pagamento, troco_para, teste, criado_em
        FROM pedidos
        ORDER BY criado_em DESC`
     );
@@ -363,6 +307,7 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
   }
 
   try {
+    let reembolsoRealizado = false;
     const motivo = typeof motivo_cancelamento === 'string' ? motivo_cancelamento.trim() : '';
     if (status === 'cancelado' && !motivo) {
       return res.status(400).json({ erro: 'Informe o motivo do cancelamento.' });
@@ -378,7 +323,7 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
         return res.status(404).json({ erro: 'Pedido não encontrado.' });
       }
 
-      await reembolsarPagamento(pedido.rows[0].pagamento_id);
+      reembolsoRealizado = await reembolsarPagamento(pedido.rows[0].pagamento_id);
     }
 
     const resultado = await pool.query(
@@ -398,7 +343,7 @@ app.patch('/api/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => 
       return res.status(404).json({ erro: 'Pedido não encontrado.' });
     }
 
-    return res.json({ sucesso: true, reembolso: status === 'cancelado' });
+    return res.json({ sucesso: true, reembolso: reembolsoRealizado });
   } catch (erro) {
     console.error(erro);
     return res.status(502).json({ erro: erro.message || 'Não foi possível atualizar o status.' });
@@ -441,105 +386,6 @@ app.post('/api/pagamento-pix', async (req, res) => {
   }
 });
 
-app.get('/api/pagamento-config', (_req, res) => {
-  if (!credenciaisMercadoPagoConfiguradas()) {
-    return res.status(503).json({ erro: 'As credenciais do Mercado Pago não estão completas.' });
-  }
-
-  return res.json({ publicKey: process.env.MP_PUBLIC_KEY });
-});
-
-// Processa o token do cartão gerado pelo Payment Brick do Mercado Pago
-app.post('/api/pagamento-cartao', async (req, res) => {
-  const {
-    transaction_amount,
-    token,
-    description,
-    installments,
-    payment_method_id,
-    issuer_id,
-    payer,
-    device_id,
-    order
-  } = req.body || {};
-  const valor = normalizarValor(transaction_amount, 1);
-  const documentoBruto = payer?.identification?.number;
-  const documento = textoPagamento(documentoBruto == null ? '' : String(documentoBruto), 20).replace(/\D/g, '');
-  const deviceId = textoPagamento(device_id, 255);
-
-  if (!process.env.MP_ACCESS_TOKEN) {
-    return res.status(503).json({ erro: 'O pagamento ainda não está configurado no servidor.' });
-  }
-
-  if (valor === null || !token || !payment_method_id || !payer?.email) {
-    return res.status(400).json({ erro: 'Dados do pagamento incompletos.' });
-  }
-
-  if (![11, 14].includes(documento.length)) {
-    return res.status(400).json({ erro: 'Informe um CPF válido para processar o pagamento.' });
-  }
-
-
-  const totalItens = Array.isArray(order?.items)
-    ? order.items.reduce((soma, item) => soma + (Number(item?.unit_price) || 0) * (Number(item?.quantity) || 0), 0)
-    : 0;
-
-  if (Math.abs(totalItens - valor) > 0.009) {
-    return res.status(400).json({ erro: 'O valor do pagamento não corresponde ao total do carrinho.' });
-  }
-
-  try {
-    const payment = new Payment(client);
-    const dadosAntifraude = montarDadosAntifraude(req, order);
-    const nomeComprador = dadosAntifraude.payer || {};
-    const resultado = await payment.create({
-      body: {
-        transaction_amount: valor,
-        token,
-        description: description || 'Pedido LosPizzanitos',
-        installments: Number(installments) || 1,
-        payment_method_id,
-        ...(issuer_id ? { issuer_id } : {}),
-        payer: {
-          email: payer.email,
-          identification: {
-            type: textoPagamento(payer.identification.type, 10) || (documento.length === 11 ? 'CPF' : 'CNPJ'),
-            number: documento
-          },
-          ...(nomeComprador.first_name ? { first_name: nomeComprador.first_name } : {}),
-          ...(nomeComprador.last_name ? { last_name: nomeComprador.last_name } : {}),
-          ...(nomeComprador.address ? { address: nomeComprador.address } : {})
-        },
-        ...(Object.keys(dadosAntifraude).length ? { additional_info: dadosAntifraude } : {})
-      },
-      requestOptions: {
-        idempotencyKey: crypto.randomUUID(),
-        ...(deviceId ? { meliSessionId: deviceId } : {})
-      }
-    });
-
-    if (resultado.status !== 'approved') {
-      console.warn('Pagamento não aprovado pelo Mercado Pago', {
-        id: resultado.id,
-        status: resultado.status,
-        detalhe: resultado.status_detail,
-        deviceIdEnviado: Boolean(deviceId),
-        cpfEnviado: true,
-        itensEnviados: dadosAntifraude.items?.length || 0,
-        emailTeste: payer.email.trim().toLowerCase() === 'test@testuser.com'
-      });
-    }
-
-    return res.json({ id: resultado.id, status: resultado.status, detalhe: resultado.status_detail });
-  } catch (erro) {
-    console.error(erro);
-    const detalhe = extrairErroMercadoPago(erro);
-    return res.status(502).json({
-      erro: detalhe || 'Não foi possível processar o cartão. Confira os dados e tente novamente.'
-    });
-  }
-});
- 
 // Rota para checar status do pagamento
 app.get('/api/pagamento-status/:id', async (req, res) => {
   try {
@@ -554,14 +400,28 @@ app.get('/api/pagamento-status/:id', async (req, res) => {
  
 // Criar pedido (chamado depois que o Pix é aprovado)
 app.post('/api/pedidos', async (req, res) => {
-  const { email, nome, itens, total, endereco, pagamento_id } = req.body;
+  const { email, nome, itens, total, endereco, pagamento_id, forma_pagamento, troco_para } = req.body;
+  const formasPermitidas = ['pix', 'cartao_entrega', 'dinheiro', 'nao_informado'];
+  const formaNormalizada = forma_pagamento || (pagamento_id ? 'pix' : 'nao_informado');
+
+  if (!formasPermitidas.includes(formaNormalizada)) {
+    return res.status(400).json({ erro: 'Forma de pagamento inválida.' });
+  }
+
+  const trocoNormalizado = formaNormalizada === 'dinheiro' && troco_para !== null && troco_para !== undefined
+    ? Number(troco_para)
+    : null;
+
+  if (trocoNormalizado !== null && (!Number.isFinite(trocoNormalizado) || trocoNormalizado < Number(total))) {
+    return res.status(400).json({ erro: 'O valor informado para troco é inválido.' });
+  }
  
   try {
     const resultado = await pool.query(
-      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total, pagamento_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO pedidos (cliente_nome, cliente_email, itens, endereco, total, pagamento_id, forma_pagamento, troco_para)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id`,
-      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), total, pagamento_id || null]
+      [nome, email, JSON.stringify(itens), JSON.stringify(endereco), total, pagamento_id || null, formaNormalizada, trocoNormalizado]
     );
  
     res.json({ sucesso: true, pedidoId: resultado.rows[0].id });
@@ -577,7 +437,7 @@ app.get('/api/pedidos/cliente', async (req, res) => {
  
   try {
     const resultado = await pool.query(
-      `SELECT id, itens, total, endereco, status, motivo_cancelamento, teste, criado_em
+      `SELECT id, itens, total, endereco, status, motivo_cancelamento, forma_pagamento, troco_para, teste, criado_em
        FROM pedidos
        WHERE cliente_email = $1
        ORDER BY criado_em DESC`,
@@ -619,7 +479,7 @@ app.patch('/api/pedidos/cliente/:id/cancelar', async (req, res) => {
       return res.status(400).json({ erro: 'Pedido não encontrado ou não pode mais ser cancelado.' });
     }
 
-    await reembolsarPagamento(pedido.rows[0].pagamento_id);
+    const reembolsoRealizado = await reembolsarPagamento(pedido.rows[0].pagamento_id);
 
     const resultado = await pool.query(
       `UPDATE pedidos
@@ -633,7 +493,7 @@ app.patch('/api/pedidos/cliente/:id/cancelar', async (req, res) => {
       return res.status(409).json({ erro: 'O pedido mudou de status enquanto o estorno era processado.' });
     }
  
-    res.json({ sucesso: true, reembolso: true, motivo_cancelamento: resultado.rows[0].motivo_cancelamento });
+    res.json({ sucesso: true, reembolso: reembolsoRealizado, motivo_cancelamento: resultado.rows[0].motivo_cancelamento });
   } catch (erro) {
     console.error(erro);
     res.status(502).json({ erro: erro.message || 'Não foi possível cancelar o pedido.' });
