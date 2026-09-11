@@ -111,11 +111,11 @@ const FOTOS_PRODUTOS = [
   ['brigadeiro', 'Brigadeiro', 'https://ceks4.github.io/Pizzaria/assets/menu/pizza-brigadeiro.jpg', 'https://ceks4.github.io/Pizzaria/', 'Imagem criada para Los Pizzanitos'],
   ['banana-com-canela', 'Banana com Canela', 'https://ceks4.github.io/Pizzaria/assets/menu/pizza-banana-canela.jpg', 'https://ceks4.github.io/Pizzaria/', 'Imagem criada para Los Pizzanitos'],
   ['prestigio', 'Prestígio', 'https://ceks4.github.io/Pizzaria/assets/menu/pizza-prestigio.jpg', 'https://ceks4.github.io/Pizzaria/', 'Imagem criada para Los Pizzanitos'],
-  ['refrigerante-2l', 'Refrigerante 2L', 'https://images.pexels.com/photos/14373170/pexels-photo-14373170.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/soda%20bottle/', 'Beyza Yurtkuran / Pexels'],
-  ['refrigerante-lata', 'Refrigerante lata', 'https://images.pexels.com/photos/5860659/pexels-photo-5860659.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/soda%20can/', 'Gustavo Santana / Pexels'],
-  ['suco-natural', 'Suco natural', 'https://images.pexels.com/photos/14510445/pexels-photo-14510445.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/orange%20juice/', 'Rae Wallis / Pexels'],
-  ['agua-mineral', 'Água mineral', 'https://images.pexels.com/photos/31699476/pexels-photo-31699476.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/water%20bottle/', 'Jaralol / Pexels'],
-  ['cerveja-long-neck', 'Cerveja long neck', 'https://images.pexels.com/photos/5537952/pexels-photo-5537952.jpeg?auto=compress&cs=tinysrgb&w=1200', 'https://www.pexels.com/search/beer%20bottle/', 'Cottonbro Studio / Pexels']
+  ['refrigerante-2l', 'Refrigerante 2L', 'https://ceks4.github.io/Pizzaria/assets/menu/bebida-refrigerante-2l.jpg', 'https://ceks4.github.io/Pizzaria/', 'Imagem criada para Los Pizzanitos'],
+  ['refrigerante-lata', 'Refrigerante lata', 'https://ceks4.github.io/Pizzaria/assets/menu/bebida-refrigerante-lata.jpg', 'https://ceks4.github.io/Pizzaria/', 'Imagem criada para Los Pizzanitos'],
+  ['suco-natural', 'Suco natural', 'https://ceks4.github.io/Pizzaria/assets/menu/bebida-suco-natural.jpg', 'https://ceks4.github.io/Pizzaria/', 'Imagem criada para Los Pizzanitos'],
+  ['agua-mineral', 'Água mineral', 'https://ceks4.github.io/Pizzaria/assets/menu/bebida-agua-mineral.jpg', 'https://ceks4.github.io/Pizzaria/', 'Imagem criada para Los Pizzanitos'],
+  ['cerveja-long-neck', 'Cerveja long neck', 'https://ceks4.github.io/Pizzaria/assets/menu/bebida-cerveja-long-neck.jpg', 'https://ceks4.github.io/Pizzaria/', 'Imagem criada para Los Pizzanitos']
 ].map(([slug, nome, url, fonte_url, credito]) => ({ slug, nome, url, fonte_url, credito }));
 
 async function garantirColunasPedidos() {
