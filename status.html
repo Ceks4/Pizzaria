@@ -8,21 +8,27 @@
   <link rel="stylesheet" href="auth.css?v=3">
   <style>
     .card { max-width: 560px; }
-    .pedido-status { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e0d8cc; }
+    .pedido-status { margin-top: 24px; }
     .pedido-status[hidden] { display: none; }
-    .pedido-status h3 { color: #5c1f1f; margin-bottom: 8px; }
-    .pedido-item { padding: 20px 0; border-bottom: 1px solid #e0d8cc; }
-    .pedido-item:last-child { border-bottom: 0; }
+    #listaPedidos { display: grid; gap: 22px; }
+    .pedido-status h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #5c1f1f; margin-bottom: 10px; }
+    .pedido-item { padding: 20px; background: #fffef5; border: 3px solid #07070c; box-shadow: 5px 5px 0 #6739d6; }
     .status-atual { color: #a0522d; font-size: 1.25rem; font-weight: 700; }
     .linha-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
     .etapa { padding: 12px 6px; border-top: 4px solid #e0d8cc; color: #7a6a60; text-align: center; font-size: .78rem; }
     .etapa.ativa { border-color: #a0522d; color: #5c1f1f; font-weight: 700; }
-    .resumo-cliente { margin-top: 22px; color: #3a2a24; font-size: .9rem; line-height: 1.6; }
+    .resumo-cliente { margin-top: 18px; padding: 13px; color: #3a2a24; background: #f0ebff; border: 2px solid #07070c; font-size: .9rem; line-height: 1.65; overflow-wrap: anywhere; }
     .btn-cancelar { margin-top: 16px; border: 1px solid #b02a2a; border-radius: 6px; padding: 9px 12px; background: transparent; color: #b02a2a; cursor: pointer; font-weight: 600; }
     .btn-cancelar:hover { background: #b02a2a; color: #fff; }
     .btn-cancelar:disabled { opacity: .55; cursor: not-allowed; }
     .badge-teste { display: inline-flex; margin-left: 8px; padding: 3px 8px; border-radius: 999px; color: #744b00; background: #fff0b8; font-size: .7rem; vertical-align: middle; }
-    @media (max-width: 480px) { .linha-status { grid-template-columns: 1fr; } .etapa { text-align: left; } }
+    .pedidos-vazio { padding: 24px 14px; border: 3px dashed #07070c; background: #f0ebff; font-weight: 800; text-align: center; }
+    @media (max-width: 480px) {
+      .pedido-item { padding: 14px; box-shadow: 4px 4px 0 #6739d6; }
+      .linha-status { gap: 5px !important; }
+      .etapa { min-width: 0; padding: 9px 4px; font-size: .65rem; line-height: 1.25; }
+      .status-atual { display: block; margin-top: 4px; font-size: 1.05rem; }
+    }
   </style>
   <link rel="stylesheet" href="comic.css?v=2">
 </head>
@@ -71,6 +77,11 @@
     function mostrarPedidos(pedidos) {
       const lista = document.getElementById('listaPedidos');
       lista.innerHTML = '';
+      if (!Array.isArray(pedidos) || pedidos.length === 0) {
+        lista.innerHTML = '<p class="pedidos-vazio">Você ainda não tem pedidos para acompanhar.</p>';
+        resultado.hidden = false;
+        return;
+      }
       pedidos.forEach(pedido => {
         const bloco = document.createElement('article');
         bloco.className = 'pedido-item';
