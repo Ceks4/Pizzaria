@@ -143,6 +143,10 @@ nav a:hover,
   border: 2px solid var(--ink);
 }
 
+.menu-toggle {
+  display: none;
+}
+
 /* Home */
 .home-page .hero {
   position: relative;
@@ -1086,18 +1090,99 @@ table {
   .home-page nav > div:last-child {
     width: 100%;
     padding: 4px 4px 7px;
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    overscroll-behavior-inline: contain;
-    scrollbar-width: thin;
-    scroll-snap-type: x proximity;
+    overflow: visible;
+    flex-wrap: wrap;
   }
 
   nav > *,
   .menu > *,
   .home-page nav > div:last-child > * {
     flex: 0 0 auto;
-    scroll-snap-align: start;
+    scroll-snap-align: none;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 94px;
+    min-height: 44px;
+    margin-left: auto;
+    padding: 8px 12px;
+    color: var(--ink);
+    background: var(--green);
+    border: 3px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--yellow);
+    font: 900 .82rem/1 "Arial Black", Arial, sans-serif;
+    letter-spacing: .06em;
+    cursor: pointer;
+  }
+
+  .menu-toggle span {
+    font-size: 1.25rem;
+    line-height: .8;
+  }
+
+  .home-page header nav.container,
+  .menu-page .topo-conteudo {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .home-page header .marca,
+  .menu-page header .marca {
+    flex: 1 1 auto;
+  }
+
+  .js .home-page .menu-links:not(.menu-aberto),
+  .js .menu-page .menu-links:not(.menu-aberto) {
+    display: none;
+  }
+
+  .home-page .menu-links.menu-aberto,
+  .menu-page .menu-links.menu-aberto {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    width: 100%;
+    margin-top: 10px;
+    padding: 13px;
+    background: var(--purple-dark);
+    border: 3px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--green);
+  }
+
+  .home-page .menu-links.menu-aberto > *,
+  .menu-page .menu-links.menu-aberto > * {
+    width: 100%;
+    margin: 0;
+  }
+
+  .home-page .menu-links.menu-aberto a,
+  .menu-page .menu-links.menu-aberto a,
+  .menu-page .menu-links.menu-aberto .botao-carrinho {
+    min-height: 44px;
+    padding: 8px 7px;
+    border: 2px solid var(--ink);
+    font-size: .7rem;
+    text-align: center;
+  }
+
+  .menu-page .menu-links.menu-aberto .perfil {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0 0;
+    border-top: 2px solid var(--green);
+  }
+
+  .menu-page .menu-links.menu-aberto .perfil[hidden] {
+    display: none;
   }
 
   nav a,
@@ -1218,6 +1303,11 @@ table {
 }
 
 @media (max-width: 370px) {
+  .home-page .menu-links.menu-aberto,
+  .menu-page .menu-links.menu-aberto {
+    grid-template-columns: 1fr;
+  }
+
   .menu-page .tamanhos {
     grid-template-columns: 1fr;
   }
