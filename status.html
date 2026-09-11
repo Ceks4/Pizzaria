@@ -1,151 +1,42 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <title>Status do pedido - LosPizzanitos</title>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml"><title>Acompanhar pedido — LosPizzanitos</title>
   <link rel="stylesheet" href="auth.css?v=3">
   <style>
-    .card { max-width: 560px; }
-    .pedido-status { margin-top: 24px; }
-    .pedido-status[hidden] { display: none; }
-    #listaPedidos { display: grid; gap: 22px; }
-    .pedido-status h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #5c1f1f; margin-bottom: 10px; }
-    .pedido-item { padding: 20px; background: #fffef5; border: 3px solid #07070c; box-shadow: 5px 5px 0 #6739d6; }
-    .status-atual { color: #a0522d; font-size: 1.25rem; font-weight: 700; }
-    .linha-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
-    .etapa { padding: 12px 6px; border-top: 4px solid #e0d8cc; color: #7a6a60; text-align: center; font-size: .78rem; }
-    .etapa.ativa { border-color: #a0522d; color: #5c1f1f; font-weight: 700; }
-    .resumo-cliente { margin-top: 18px; padding: 13px; color: #3a2a24; background: #f0ebff; border: 2px solid #07070c; font-size: .9rem; line-height: 1.65; overflow-wrap: anywhere; }
-    .btn-cancelar { margin-top: 16px; border: 1px solid #b02a2a; border-radius: 6px; padding: 9px 12px; background: transparent; color: #b02a2a; cursor: pointer; font-weight: 600; }
-    .btn-cancelar:hover { background: #b02a2a; color: #fff; }
-    .btn-cancelar:disabled { opacity: .55; cursor: not-allowed; }
-    .badge-teste { display: inline-flex; margin-left: 8px; padding: 3px 8px; border-radius: 999px; color: #744b00; background: #fff0b8; font-size: .7rem; vertical-align: middle; }
-    .pedidos-vazio { padding: 24px 14px; border: 3px dashed #07070c; background: #f0ebff; font-weight: 800; text-align: center; }
-    @media (max-width: 480px) {
-      .pedido-item { padding: 14px; box-shadow: 4px 4px 0 #6739d6; }
-      .linha-status { gap: 5px !important; }
-      .etapa { min-width: 0; padding: 9px 4px; font-size: .65rem; line-height: 1.25; }
-      .status-atual { display: block; margin-top: 4px; font-size: 1.05rem; }
-    }
+    .card{max-width:760px}.pedido-status[hidden]{display:none}#listaPedidos{display:grid;gap:20px;margin-top:24px}.pedido-item{overflow:hidden;color:#07070c;background:#fffef5;border:3px solid #07070c;box-shadow:6px 6px 0 #6739d6}.pedido-item.cancelado{box-shadow:6px 6px 0 #f13b3f}
+    .pedido-cabecalho{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:18px 20px;color:#fff;background:#211342;border-bottom:3px solid #07070c}.pedido-numero{margin:0;font:italic 900 1.35rem/1 "Arial Black",Arial,sans-serif;letter-spacing:.04em}.pedido-data{display:block;margin-top:7px;color:#d8cffa;font-size:.73rem;font-weight:700}.status-selo{display:inline-flex;align-items:center;min-height:32px;padding:5px 10px;color:#07070c;background:#ffd21f;border:2px solid #07070c;box-shadow:2px 2px 0 #fff;font-size:.68rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase}.status-selo.saiu_para_entrega{background:#28d7e5}.status-selo.concluido{background:#9cf20d}.status-selo.cancelado{color:#fff;background:#f13b3f}
+    .pedido-corpo{padding:20px}.progresso{position:relative;display:grid;grid-template-columns:repeat(3,1fr);margin:4px 0 24px}.progresso::before{content:"";position:absolute;top:16px;left:16.66%;right:16.66%;height:4px;background:#d9d4df}.progresso-etapa{position:relative;z-index:1;display:grid;justify-items:center;gap:8px;color:#777180;font-size:.7rem;font-weight:800;line-height:1.25;text-align:center}.progresso-ponto{display:grid;width:34px;height:34px;place-items:center;background:#fffef5;border:3px solid #bcb6c4;border-radius:50%;font-weight:900}.progresso-etapa.ativa{color:#211342}.progresso-etapa.ativa .progresso-ponto{color:#07070c;background:#9cf20d;border-color:#07070c}.progresso.cancelado::before{background:#efb3b5}.progresso.cancelado .progresso-etapa.ativa .progresso-ponto{color:#fff;background:#f13b3f}
+    .detalhes-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}.bloco-detalhe{padding:14px;background:#f0ebff;border:2px solid #07070c}.bloco-detalhe h4{margin:0 0 10px;color:#6739d6;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.lista-itens{display:grid;gap:8px;margin:0;padding:0;list-style:none}.item-resumo{display:flex;justify-content:space-between;gap:12px;padding-bottom:7px;border-bottom:1px dashed #8b8297;font-size:.83rem;line-height:1.35}.item-resumo:last-child{padding-bottom:0;border-bottom:0}.item-quantidade{flex:0 0 auto;color:#6739d6;font-weight:900}.dados-pedido{display:grid;gap:12px}.dado-pedido small{display:block;margin-bottom:3px;color:#726a7d;font-size:.65rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.dado-pedido strong,.dado-pedido span{display:block;overflow-wrap:anywhere;font-size:.85rem;line-height:1.4}.dado-pedido.total strong{color:#6739d6;font:900 1.35rem/1 "Arial Black",Arial,sans-serif}
+    .aviso-cancelamento{margin-top:14px;padding:12px 14px;color:#781e22;background:#ffe4e5;border:2px solid #f13b3f;font-size:.82rem;line-height:1.45}.rodape-pedido{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}.ajuda-status{margin:0;color:#696171;font-size:.72rem;line-height:1.4}.btn-cancelar{flex:0 0 auto;min-height:42px;padding:8px 12px;color:#fff;background:#f13b3f;border:3px solid #07070c;box-shadow:3px 3px 0 #07070c;cursor:pointer;font-weight:900}.btn-cancelar:disabled{opacity:.55;cursor:wait}.pedidos-vazio{padding:30px 18px;background:#f0ebff;border:3px dashed #07070c;font-weight:800;text-align:center}
+    @media(max-width:560px){.card{padding-inline:13px}.pedido-cabecalho{align-items:stretch;flex-direction:column;padding:15px}.status-selo{align-self:flex-start}.pedido-corpo{padding:15px}.detalhes-grid{grid-template-columns:1fr}.progresso-etapa{font-size:.61rem}.progresso-ponto{width:30px;height:30px}.progresso::before{top:14px}.rodape-pedido{align-items:stretch;flex-direction:column}.btn-cancelar{width:100%}}
   </style>
-  <link rel="stylesheet" href="comic.css?v=6">
+  <link rel="stylesheet" href="comic.css?v=7">
 </head>
 <body class="status-page">
-  <header class="topo">
-    <div class="marca"><img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true"><div><h1>LOSPIZZANITOS</h1><p>Acompanhe seu pedido</p></div></div>
-    <nav><a class="btn-voltar-pagina" href="cardapio.html">&#8592; VOLTAR</a><a href="cardapio.html">CARDÁPIO</a></nav>
-  </header>
-  <main>
-    <div class="card">
-      <h2>STATUS DO PEDIDO</h2>
-      <p class="subtitulo">Seu pedido salvo na sua conta</p>
-      <p class="mensagem" id="mensagem" role="alert"></p>
-      <section class="pedido-status" id="resultado" hidden>
-        <div id="listaPedidos"></div>
-      </section>
-    </div>
-  </main>
+  <header class="topo"><div class="marca"><img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true"><div><h1>LOSPIZZANITOS</h1><p>Acompanhe seu pedido</p></div></div><nav><a class="btn-voltar-pagina" href="cardapio.html">&#8592; VOLTAR</a><a href="cardapio.html">CARDÁPIO</a></nav></header>
+  <main><div class="card"><h2>MEUS PEDIDOS</h2><p class="subtitulo">Acompanhe cada etapa até a sua pizza chegar.</p><p class="mensagem" id="mensagem" role="alert"></p><section class="pedido-status" id="resultado" hidden><div id="listaPedidos"></div></section></div></main>
   <script>
-    const API = (() => {
-      if (window.location.hostname === 'localhost') return 'http://localhost:3000';
-      if (window.location.hostname.includes('render')) return window.location.origin;
-      return 'https://pizzaria-asml.onrender.com';
-    })();
-    const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Finalizado', cancelado: 'Cancelado' };
-    const etapas = ['em_preparacao', 'saiu_para_entrega', 'concluido'];
-    const resultado = document.getElementById('resultado');
-    const mensagem = document.getElementById('mensagem');
-    let emailCliente = null;
-    try {
-      emailCliente = JSON.parse(localStorage.getItem('usuarioLogado') || 'null')?.email || null;
-    } catch (erro) {
-      emailCliente = null;
-    }
-
-    async function lerResposta(resposta) {
-      const tipo = resposta.headers.get('content-type') || '';
-      if (!tipo.includes('application/json')) throw new Error('O servidor ainda não foi atualizado. Publique o backend no Render.');
-      return resposta.json();
-    }
-
-    function escaparHtml(valor) {
-      return String(valor).replace(/[&<>'"]/g, caractere => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[caractere]));
-    }
-
-    function mostrarPedidos(pedidos) {
-      const lista = document.getElementById('listaPedidos');
-      lista.innerHTML = '';
-      if (!Array.isArray(pedidos) || pedidos.length === 0) {
-        lista.innerHTML = '<p class="pedidos-vazio">Você ainda não tem pedidos para acompanhar.</p>';
-        resultado.hidden = false;
-        return;
-      }
-      pedidos.forEach(pedido => {
-        const bloco = document.createElement('article');
-        bloco.className = 'pedido-item';
-        const indiceAtual = etapas.indexOf(pedido.status);
-        const itens = Array.isArray(pedido.itens) ? pedido.itens.map(item => `${item.quantidade}x ${item.nome}`).join(', ') : 'Pedido sem itens';
-        const endereco = pedido.endereco || {};
-        const podeCancelar = pedido.status === 'em_preparacao';
-        const motivo = pedido.motivo_cancelamento || pedido.motivoCancelamento || pedido.motivo || 'Pedido cancelado pelo estabelecimento.';
-        const motivoCancelamento = pedido.status === 'cancelado' ? `<div class="resumo-cliente"><strong>Motivo do cancelamento:</strong> ${escaparHtml(motivo)}</div>` : '';
-        bloco.innerHTML = `<h3>Pedido #${escaparHtml(pedido.id)}${pedido.teste ? '<span class="badge-teste">TESTE</span>' : ''}</h3><p>Status atual: <span class="status-atual">${escaparHtml(nomesStatus[pedido.status] || pedido.status)}</span></p><div class="linha-status"><div class="etapa ${indiceAtual >= 0 ? 'ativa' : ''}">Em preparação</div><div class="etapa ${indiceAtual >= 1 ? 'ativa' : ''}">Saiu para entrega</div><div class="etapa ${indiceAtual >= 2 ? 'ativa' : ''}">${pedido.status === 'cancelado' ? 'Cancelado' : 'Finalizado'}</div></div><div class="resumo-cliente">Itens: ${escaparHtml(itens)}<br>Total: ${escaparHtml(Number(pedido.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))}<br>Entrega: ${escaparHtml(`${endereco.endereco || ''}, ${endereco.numero || ''}, ${endereco.cidade || ''}/${endereco.estado || ''}`.replace(/, ,/g, ',').replace(/\s+,\s+/g, ', ').replace(/, $/, ''))}</div>${motivoCancelamento}${podeCancelar ? '<button type="button" class="btn-cancelar">Cancelar pedido</button>' : ''}`;
-        if (podeCancelar) bloco.querySelector('.btn-cancelar').addEventListener('click', () => cancelarPedido(pedido.id, bloco));
-        lista.appendChild(bloco);
-      });
-      resultado.hidden = false;
-    }
-
-    async function cancelarPedido(id, bloco) {
-      if (!confirm('Deseja realmente cancelar este pedido?')) return;
-      const motivo = window.prompt('Informe o motivo do cancelamento:');
-      if (motivo === null) return;
-      if (!motivo.trim()) {
-        alert('O motivo do cancelamento é obrigatório.');
-        return;
-      }
-      const botao = bloco.querySelector('.btn-cancelar');
-      botao.disabled = true;
-      try {
-        const resposta = await fetch(`${API}/api/pedidos/cliente/${id}/cancelar`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: emailCliente, motivo_cancelamento: motivo.trim() }) });
-        const dados = await lerResposta(resposta);
-        if (!resposta.ok) throw new Error(dados.erro);
-        await consultarPedido();
-      } catch (erro) {
-        mensagem.textContent = erro.message || 'Não foi possível cancelar o pedido.';
-        mensagem.className = 'mensagem erro';
-        botao.disabled = false;
-      }
-    }
-
-    async function consultarPedido() {
-      if (!emailCliente) {
-        mensagem.textContent = 'Entre na sua conta para acompanhar o pedido.';
-        mensagem.className = 'mensagem erro';
-        return;
-      }
-      try {
-        const resposta = await fetch(`${API}/api/pedidos/cliente?email=${encodeURIComponent(emailCliente)}`);
-        const dados = await lerResposta(resposta);
-        if (!resposta.ok) throw new Error(dados.erro);
-        mensagem.textContent = '';
-        mostrarPedidos(dados.pedidos);
-      } catch (erro) {
-        resultado.hidden = true;
-        mensagem.textContent = erro.message || 'Não foi possível consultar o pedido.';
-        mensagem.className = 'mensagem erro';
-      }
-    }
-
-    if (emailCliente) {
-      consultarPedido();
-    } else {
-      mensagem.textContent = 'Entre na sua conta para acompanhar o pedido.';
-      mensagem.className = 'mensagem erro';
-    }
-    setInterval(() => { if (!resultado.hidden) consultarPedido(); }, 30000);
+    const API=window.location.hostname==='localhost'?'http://localhost:3000':'https://pizzaria-asml.onrender.com';
+    const nomesStatus={em_preparacao:'Em preparação',saiu_para_entrega:'Saiu para entrega',concluido:'Finalizado',cancelado:'Cancelado'};
+    const nomesPagamento={pix:'Pix — pago',cartao_entrega:'Cartão na entrega',dinheiro:'Dinheiro na entrega',nao_informado:'Não informado'};
+    const etapas=['em_preparacao','saiu_para_entrega','concluido'];
+    const resultado=document.getElementById('resultado'),mensagem=document.getElementById('mensagem');let emailCliente=null;
+    try{emailCliente=JSON.parse(localStorage.getItem('usuarioLogado')||'null')?.email||null}catch(_erro){}
+    const formatarPreco=valor=>Number(valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const escaparHtml=valor=>String(valor??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    async function lerResposta(resposta){const tipo=resposta.headers.get('content-type')||'';if(!tipo.includes('application/json'))throw new Error('O servidor não respondeu corretamente. Tente novamente.');return resposta.json()}
+    function formatarEndereco(e={}){return[e.endereco&&`${e.endereco}, ${e.numero||'s/n'}`,e.bairro,e.cidade&&`${e.cidade}/${e.estado||''}`].filter(Boolean).join(' · ')||'Endereço não informado'}
+    function textoPagamento(p){if(p.forma_pagamento==='dinheiro')return p.troco_para?`Dinheiro · troco para ${formatarPreco(p.troco_para)}`:'Dinheiro · sem troco';return nomesPagamento[p.forma_pagamento]||'Não informado'}
+    function montarProgresso(p){const indice=etapas.indexOf(p.status),cancelado=p.status==='cancelado',rotulos=cancelado?['Recebido','Cancelado','Entrega interrompida']:['Em preparação','Saiu para entrega','Finalizado'];return `<div class="progresso ${cancelado?'cancelado':''}">${rotulos.map((r,i)=>`<div class="progresso-etapa ${(cancelado?i<2:indice>=i)?'ativa':''}"><span class="progresso-ponto">${cancelado&&i===1?'×':i+1}</span><span>${r}</span></div>`).join('')}</div>`}
+    function mostrarPedidos(pedidos){const lista=document.getElementById('listaPedidos');lista.innerHTML='';if(!Array.isArray(pedidos)||!pedidos.length){lista.innerHTML='<p class="pedidos-vazio">Você ainda não tem pedidos para acompanhar.</p>';resultado.hidden=false;return}
+      pedidos.forEach(p=>{const bloco=document.createElement('article');bloco.className=`pedido-item ${p.status==='cancelado'?'cancelado':''}`;const itens=Array.isArray(p.itens)&&p.itens.length?p.itens:[];const listaItens=itens.length?itens.map(i=>`<li class="item-resumo"><span>${escaparHtml(i.nome||'Item')}</span><span class="item-quantidade">${escaparHtml(i.quantidade||1)}x</span></li>`).join(''):'<li class="item-resumo">Itens não informados</li>';const motivo=p.motivo_cancelamento||'Pedido cancelado pelo estabelecimento.';
+        bloco.innerHTML=`<header class="pedido-cabecalho"><div><h3 class="pedido-numero">PEDIDO #${escaparHtml(p.id)}</h3><time class="pedido-data">${escaparHtml(new Date(p.criado_em).toLocaleString('pt-BR'))}</time></div><span class="status-selo ${escaparHtml(p.status)}">${escaparHtml(nomesStatus[p.status]||p.status)}</span></header><div class="pedido-corpo">${montarProgresso(p)}<div class="detalhes-grid"><section class="bloco-detalhe"><h4>Itens do pedido</h4><ul class="lista-itens">${listaItens}</ul></section><section class="bloco-detalhe dados-pedido"><div class="dado-pedido total"><small>Total</small><strong>${escaparHtml(formatarPreco(p.total))}</strong></div><div class="dado-pedido"><small>Pagamento</small><span>${escaparHtml(textoPagamento(p))}</span></div><div class="dado-pedido"><small>Entrega</small><span>${escaparHtml(formatarEndereco(p.endereco||{}))}</span></div></section></div>${p.status==='cancelado'?`<div class="aviso-cancelamento"><strong>Motivo do cancelamento:</strong> ${escaparHtml(motivo)}</div>`:''}<div class="rodape-pedido"><p class="ajuda-status">O status atualiza automaticamente a cada 30 segundos.</p>${p.status==='em_preparacao'?'<button type="button" class="btn-cancelar">CANCELAR PEDIDO</button>':''}</div></div>`;
+        const botao=bloco.querySelector('.btn-cancelar');if(botao)botao.addEventListener('click',()=>cancelarPedido(p.id,bloco));lista.appendChild(bloco)});resultado.hidden=false}
+    async function cancelarPedido(id,bloco){if(!confirm('Deseja realmente cancelar este pedido?'))return;const motivo=window.prompt('Informe o motivo do cancelamento:');if(motivo===null)return;if(!motivo.trim()){alert('O motivo do cancelamento é obrigatório.');return}const botao=bloco.querySelector('.btn-cancelar');botao.disabled=true;try{const resposta=await fetch(`${API}/api/pedidos/cliente/${id}/cancelar`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:emailCliente,motivo_cancelamento:motivo.trim()})});const dados=await lerResposta(resposta);if(!resposta.ok)throw new Error(dados.erro);await consultarPedido()}catch(erro){mensagem.textContent=erro.message||'Não foi possível cancelar o pedido.';mensagem.className='mensagem erro';botao.disabled=false}}
+    async function consultarPedido(){if(!emailCliente){mensagem.textContent='Entre na sua conta para acompanhar o pedido.';mensagem.className='mensagem erro';return}try{const resposta=await fetch(`${API}/api/pedidos/cliente?email=${encodeURIComponent(emailCliente)}`);const dados=await lerResposta(resposta);if(!resposta.ok)throw new Error(dados.erro);mensagem.textContent='';mostrarPedidos(dados.pedidos)}catch(erro){resultado.hidden=true;mensagem.textContent=erro.message||'Não foi possível consultar o pedido.';mensagem.className='mensagem erro'}}
+    consultarPedido();setInterval(()=>{if(!resultado.hidden)consultarPedido()},30000);
   </script>
 </body>
 </html>

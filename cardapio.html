@@ -6,7 +6,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title> Cardápio - Lospizzanitos</title>
 <link rel="stylesheet" href="cardapio.css?v=3">
-<link rel="stylesheet" href="comic.css?v=6">
+<link rel="stylesheet" href="comic.css?v=7">
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body class="menu-page">
@@ -82,7 +82,7 @@
       </article>
 
       <article class="item">
-        <img class="foto" src="assets/menu/pizza-portuguesa.jpg" alt="Pizza portuguesa"> 
+        <img class="foto" src="assets/menu/pizza-portuguesa.jpg" alt="Pizza portuguesa">
         <div class="item-topo">
           <h4>Portuguesa</h4>
           <span class="preco">R$ 58,00</span>
@@ -91,7 +91,7 @@
       </article>
 
       <article class="item">
-        <img class="foto" src="assets/menu/pizza-frango-com-catupiry.jpg" alt="Pizza de frango com catupiry"> 
+        <img class="foto" src="assets/menu/pizza-frango-com-catupiry.jpg" alt="Pizza de frango com catupiry">
         <div class="item-topo">
           <h4>Frango com Catupiry</h4>
           <span class="preco">R$ 59,00</span>
@@ -644,12 +644,6 @@
     const ehPizza = !item.closest('#bebidas');
     let seletorTamanho = null;
 
-    const botao = document.createElement('button');
-    botao.type = 'button';
-    botao.className = 'botao-comprar';
-    botao.textContent = ehPizza ? 'Escolha o tamanho' : 'Adicionar ao carrinho';
-    botao.disabled = ehPizza;
-
     if (ehPizza) {
       const campoTamanho = document.createElement('div');
       campoTamanho.className = 'campo-tamanho';
@@ -681,6 +675,11 @@
       });
     }
 
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.className = 'botao-comprar';
+    botao.textContent = ehPizza ? 'Escolha o tamanho' : 'Adicionar ao carrinho';
+    botao.disabled = ehPizza;
     botao.addEventListener('click', () => {
       const opcaoTamanho = seletorTamanho?.selectedOptions[0] || null;
       if (ehPizza && !seletorTamanho.value) return;

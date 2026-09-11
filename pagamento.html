@@ -1,513 +1,99 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<title>Pagamento — LosPizzanitos</title>
-<link rel="stylesheet" href="auth.css?v=3">
-<script src="https://sdk.mercadopago.com/js/v2"></script>
-<style>
-  .card { max-width: 460px; text-align: center; }
-  .valor-total {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #5c1f1f;
-    margin-bottom: 24px;
-  }
-  #areaQrCode { display: none; }
-  #qrcodeImg {
-    width: 220px;
-    height: 220px;
-    margin: 0 auto 18px;
-    border: 1px solid #e0d8cc;
-    border-radius: 10px;
-    display: block;
-  }
-  .copia-cola {
-    background: #faf8f4;
-    border: 1px solid #e0d8cc;
-    border-radius: 8px;
-    padding: 12px;
-    font-size: 0.75rem;
-    word-break: break-all;
-    color: #3a2a24;
-    margin-bottom: 14px;
-    text-align: left;
-  }
-  .btn-copiar {
-    background: #a0522d;
-    color: #fff;
-    border: none;
-    border-radius: 999px;
-    padding: 10px 20px;
-    font-size: 0.8rem;
-    font-weight: 700;
-    cursor: pointer;
-    margin-bottom: 18px;
-  }
-  .btn-copiar:hover { background: #7a3a20; }
-  .status-pix {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #7a6a60;
-  }
-  .status-pix.pago { color: #2a7a3d; }
-  .metodos-pagamento { display: grid; gap: 12px; text-align: left; }
-  .metodo-pagamento {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: #fffaf3;
-    border: 1px solid #e0d8cc;
-    color: #fff;
-    border-radius: 8px;
-    padding: 14px 16px;
-    cursor: pointer;
-    text-align: left;
-    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
-  }
-  .metodo-pagamento:hover,
-  .metodo-pagamento:focus-visible {
-    background: #fff;
-    border-color: #a0522d;
-    transform: translateY(-2px);
-  }
-  .metodo-pagamento:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-  .metodo-icone {
-    width: 44px;
-    height: 44px;
-    display: grid;
-    place-items: center;
-    flex: 0 0 44px;
-    border-radius: 8px;
-    background: #5c1f1f;
-    color: #fff;
-  }
-  .metodo-icone.pix { background: #008f83; }
-  .metodo-icone svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .pix-marca { font-size: 0.82rem; font-weight: 800; letter-spacing: 0.04em; }
-  .metodo-texto { display: grid; gap: 3px; color: #3a2a24; }
-  .metodo-titulo { font-size: 0.95rem; font-weight: 700; }
-  .metodo-detalhe { color: #7a6a60; font-size: 0.78rem; }
-  .metodo-seta { margin-left: auto; color: #a0522d; font-size: 1.25rem; }
-  .nota-seguranca { color: #7a6a60; font-size: 0.78rem; margin-top: 2px; text-align: center; }
-  #areaCartao { display: none; text-align: left; }
-  #cardPaymentBrick_container { margin-top: 12px; }
-  .btn-voltar-metodos {
-    margin-top: 12px;
-    border: 0;
-    background: transparent;
-    color: #a0522d;
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-  }
-</style>
-<link rel="stylesheet" href="comic.css?v=6">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <title>Pagamento — LosPizzanitos</title>
+  <link rel="stylesheet" href="auth.css?v=3">
+  <style>
+    .card { max-width: 560px; }
+    .valor-total { margin: 4px 0 24px; color: #6739d6; font: 900 clamp(2rem, 8vw, 3rem)/1 "Arial Black", Arial, sans-serif; text-align: left; }
+    .metodos-pagamento { display: grid; gap: 12px; }
+    .metodo-pagamento { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 13px; width: 100%; min-height: 76px; padding: 12px 14px; color: #07070c; background: #fffef5; border: 3px solid #07070c; box-shadow: 4px 4px 0 #6739d6; cursor: pointer; text-align: left; transition: transform .16s ease, box-shadow .16s ease; }
+    .metodo-pagamento:hover, .metodo-pagamento:focus-visible { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #9cf20d; }
+    .metodo-pagamento:disabled { cursor: wait; opacity: .6; transform: none; }
+    .metodo-icone { display: grid; width: 46px; height: 46px; place-items: center; color: #fff; background: #6739d6; border: 3px solid #07070c; font-size: .68rem; font-weight: 900; }
+    .metodo-icone.pix { color: #07070c; background: #9cf20d; }
+    .metodo-icone.dinheiro { color: #07070c; background: #ffd21f; }
+    .metodo-icone svg { width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .metodo-texto { display: grid; gap: 3px; }
+    .metodo-titulo { font-family: "Arial Black", Arial, sans-serif; font-size: .9rem; text-transform: uppercase; }
+    .metodo-detalhe { color: #565064; font-size: .78rem; line-height: 1.35; }
+    .metodo-seta { color: #6739d6; font-size: 1.5rem; font-weight: 900; }
+    .nota-entrega { margin-top: 16px; padding: 11px 13px; color: #332d40; background: #eefbcf; border: 2px solid #07070c; font-size: .8rem; line-height: 1.45; }
+    #areaQrCode, #areaDinheiro { display: none; }
+    #qrcodeImg { display: block; width: min(230px, 100%); height: auto; aspect-ratio: 1; margin: 0 auto 16px; background: #fff; border: 3px solid #07070c; }
+    .copia-cola { margin-bottom: 12px; padding: 11px; overflow-wrap: anywhere; color: #332d40; background: #f0ebff; border: 2px solid #07070c; font-size: .72rem; text-align: left; }
+    .btn-copiar, .btn-confirmar-entrega, .btn-voltar-metodos { min-height: 44px; padding: 9px 13px; border: 3px solid #07070c; font-weight: 900; cursor: pointer; }
+    .btn-copiar, .btn-confirmar-entrega { width: 100%; color: #07070c; background: #9cf20d; box-shadow: 3px 3px 0 #07070c; }
+    .btn-voltar-metodos { margin-top: 12px; color: #07070c; background: #ffd21f; box-shadow: 3px 3px 0 #07070c; }
+    .status-pix { margin-top: 13px; color: #565064; font-size: .85rem; font-weight: 800; text-align: center; }
+    .status-pix.pago { color: #397400; }
+    .area-titulo { margin-bottom: 8px; color: #6739d6; font-family: "Arial Black", Arial, sans-serif; font-size: 1.15rem; text-transform: uppercase; }
+    .area-texto { margin-bottom: 18px; color: #4d475a; line-height: 1.5; }
+    .campo-troco { margin-bottom: 14px; }
+    .campo-troco small { display: block; margin-top: 6px; color: #625d6b; font-size: .74rem; }
+    @media (max-width: 430px) { .metodo-pagamento { grid-template-columns: 42px 1fr; gap: 10px; padding: 10px; } .metodo-icone { width: 40px; height: 40px; } .metodo-seta { display: none; } .metodo-titulo { font-size: .78rem; } }
+  </style>
+  <link rel="stylesheet" href="comic.css?v=7">
 </head>
 <body class="payment-page">
- 
-<header class="topo">
-  <div class="marca">
-    <img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true">
-    <div>
-      <h1>LOSPIZZANITOS</h1>
-      <p>Pizzaria sabor caseiro · forno a lenha</p>
-    </div>
-  </div>
-  <nav>
-    <a class="btn-voltar-pagina" href="finalizar.html">&#8592; VOLTAR</a>
-    <a href="cardapio.html">CARDÁPIO</a>
-  </nav>
-</header>
- 
-<main>
-  <div class="card">
-    <h2>PAGAMENTO</h2>
-    <p class="subtitulo">Escolha uma forma de pagamento para confirmar seu pedido</p>
- 
-    <div class="valor-total" id="valorTotal">R$ 0,00</div>
- 
+  <header class="topo"><div class="marca"><img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true"><div><h1>LOSPIZZANITOS</h1><p>Pizzaria sabor caseiro · forno a lenha</p></div></div><nav><a class="btn-voltar-pagina" href="finalizar.html">&#8592; VOLTAR</a><a href="cardapio.html">CARDÁPIO</a></nav></header>
+  <main><div class="card">
+    <h2>PAGAMENTO</h2><p class="subtitulo">Como você prefere pagar?</p><div class="valor-total" id="valorTotal">R$ 0,00</div>
     <div id="areaInicial" class="metodos-pagamento">
-      <button class="metodo-pagamento" id="btnGerarPix" type="button">
-        <span class="metodo-icone pix" aria-hidden="true"><span class="pix-marca">PIX</span></span>
-        <span class="metodo-texto">
-          <span class="metodo-titulo">Pagar com Pix</span>
-          <span class="metodo-detalhe">Aprovação rápida pelo QR Code</span>
-        </span>
-        <span class="metodo-seta" aria-hidden="true">&#8250;</span>
-      </button>
-      <button class="metodo-pagamento" id="btnPagarCartao" type="button">
-        <span class="metodo-icone" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"></rect><path d="M2.5 9.5h19M6 14h4"></path></svg>
-        </span>
-        <span class="metodo-texto">
-          <span class="metodo-titulo">Pagar com cartão</span>
-          <span class="metodo-detalhe">Crédito ou débito pelo Mercado Pago</span>
-        </span>
-        <span class="metodo-seta" aria-hidden="true">&#8250;</span>
-      </button>
-      <p class="nota-seguranca">Pagamento protegido. Os dados do cartão não ficam nesta página.</p>
+      <button class="metodo-pagamento" id="btnGerarPix" type="button"><span class="metodo-icone pix" aria-hidden="true">PIX</span><span class="metodo-texto"><span class="metodo-titulo">Pix agora</span><span class="metodo-detalhe">Pague pelo QR Code antes da entrega</span></span><span class="metodo-seta" aria-hidden="true">›</span></button>
+      <button class="metodo-pagamento" id="btnCartaoEntrega" type="button"><span class="metodo-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"></rect><path d="M2.5 9.5h19M6 14h4"></path></svg></span><span class="metodo-texto"><span class="metodo-titulo">Cartão na entrega</span><span class="metodo-detalhe">Crédito ou débito na maquininha</span></span><span class="metodo-seta" aria-hidden="true">›</span></button>
+      <button class="metodo-pagamento" id="btnDinheiro" type="button"><span class="metodo-icone dinheiro" aria-hidden="true">R$</span><span class="metodo-texto"><span class="metodo-titulo">Dinheiro na entrega</span><span class="metodo-detalhe">Informe abaixo se precisar de troco</span></span><span class="metodo-seta" aria-hidden="true">›</span></button>
+      <p class="nota-entrega">Pagamentos na entrega são feitos diretamente ao entregador. Nenhum dado de cartão será solicitado pelo site.</p>
     </div>
-
     <p class="mensagem" id="mensagem" role="status" aria-live="polite"></p>
- 
-    <div id="areaQrCode">
-      <img id="qrcodeImg" alt="QR Code Pix">
-      <div class="copia-cola" id="copiaCola"></div>
-      <button class="btn-copiar" id="btnCopiar">COPIAR CÓDIGO PIX</button>
-      <p class="status-pix" id="statusPix">Aguardando pagamento...</p>
-    </div>
+    <div id="areaQrCode"><h3 class="area-titulo">Pague com Pix</h3><img id="qrcodeImg" alt="QR Code Pix"><div class="copia-cola" id="copiaCola"></div><button class="btn-copiar" id="btnCopiar" type="button">COPIAR CÓDIGO PIX</button><p class="status-pix" id="statusPix">Aguardando pagamento...</p><button class="btn-voltar-metodos" data-voltar type="button">&#8592; OUTRAS OPÇÕES</button></div>
+    <div id="areaDinheiro"><h3 class="area-titulo">Dinheiro na entrega</h3><p class="area-texto">Se precisar de troco, informe o valor que entregará ao entregador.</p><div class="campo-troco"><label for="trocoPara">Troco para</label><input id="trocoPara" type="text" inputmode="decimal" placeholder="Ex.: 100,00"><small>Deixe vazio se não precisar de troco.</small></div><button class="btn-confirmar-entrega" id="btnConfirmarDinheiro" type="button">CONFIRMAR PEDIDO</button><button class="btn-voltar-metodos" data-voltar type="button">&#8592; OUTRAS OPÇÕES</button></div>
+  </div></main>
+  <script>
+    const URL_BACKEND = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://pizzaria-asml.onrender.com';
+    const chaveCarrinho = 'carrinhoPizzaria';
+    const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    let carrinho = [], pagamentoId = null, intervaloChecagem = null;
+    try { carrinho = JSON.parse(localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]'); if (!Array.isArray(carrinho)) carrinho = []; } catch (_erro) { carrinho = []; }
+    let endereco = {}, usuario = {};
+    try { endereco = JSON.parse(localStorage.getItem('enderecoEntrega') || '{}'); } catch (_erro) {}
+    try { usuario = JSON.parse(localStorage.getItem('usuarioLogado') || '{}'); } catch (_erro) {}
+    const total = Number(carrinho.reduce((soma, item) => soma + Number(item.preco) * Number(item.quantidade), 0).toFixed(2));
+    document.getElementById('valorTotal').textContent = formatarPreco(total);
+    const areaInicial = document.getElementById('areaInicial'), areaQrCode = document.getElementById('areaQrCode'), areaDinheiro = document.getElementById('areaDinheiro'), mensagem = document.getElementById('mensagem'), statusPix = document.getElementById('statusPix');
 
-    <div id="areaCartao">
-      <div id="cardPaymentBrick_container"></div>
-      <button class="btn-voltar-metodos" id="btnVoltarMetodos" type="button">&#8592; Escolher outra forma de pagamento</button>
-    </div>
-  </div>
-</main>
-
-<input type="hidden" id="deviceId" value="">
-<script src="https://www.mercadopago.com/v2/security.js" view="checkout" output="deviceId"></script>
-<script>
-  const URL_BACKEND = 'https://pizzaria-asml.onrender.com';
-  const VALOR_MINIMO_CARTAO = 1;
- 
-  // ---- Carrega carrinho e endereço salvos ----
-  const chaveCarrinho = 'carrinhoPizzaria';
-  let carrinho = [];
-
-  try {
-    const carrinhoJson = localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]';
-    const carrinhoSalvo = JSON.parse(carrinhoJson);
-    carrinho = Array.isArray(carrinhoSalvo) ? carrinhoSalvo : [];
-
-    if (carrinho.length === 0) {
-      const carrinhoLegacy = JSON.parse(localStorage.getItem('carrinho') || '[]');
-      if (Array.isArray(carrinhoLegacy) && carrinhoLegacy.length > 0) {
-        carrinho = carrinhoLegacy;
-        localStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
-        sessionStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
-        localStorage.removeItem('carrinho');
-      }
+    async function lerResposta(resposta) { const tipo = resposta.headers.get('content-type') || ''; if (!tipo.includes('application/json')) throw new Error('O servidor não respondeu corretamente. Tente novamente.'); return resposta.json(); }
+    function limparCarrinho() { localStorage.removeItem(chaveCarrinho); sessionStorage.removeItem(chaveCarrinho); localStorage.removeItem('carrinho'); }
+    function mostrarArea(area) { areaInicial.style.display = 'none'; areaQrCode.style.display = 'none'; areaDinheiro.style.display = 'none'; area.style.display = 'block'; mensagem.textContent = ''; }
+    async function salvarPedido(formaPagamento, trocoPara = null, pagamentoIdInformado = null) {
+      const resposta = await fetch(`${URL_BACKEND}/api/pedidos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: usuario.email || '', nome: usuario.nome || 'Cliente', itens: carrinho, total, endereco, pagamento_id: pagamentoIdInformado, forma_pagamento: formaPagamento, troco_para: trocoPara }) });
+      const dados = await lerResposta(resposta); if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível registrar o pedido.'); return dados;
     }
-
-    if (carrinho.length > 0) {
-      sessionStorage.setItem(chaveCarrinho, JSON.stringify(carrinho));
+    async function confirmarNaEntrega(formaPagamento, trocoPara = null) {
+      if (!carrinho.length || total <= 0) { mensagem.textContent = 'Seu carrinho está vazio.'; mensagem.className = 'mensagem erro'; return; }
+      document.querySelectorAll('button').forEach(botao => botao.disabled = true); mensagem.textContent = 'Confirmando seu pedido...'; mensagem.className = 'mensagem';
+      try { const dados = await salvarPedido(formaPagamento, trocoPara); sessionStorage.setItem('ultimoPedidoId', String(dados.pedidoId)); limparCarrinho(); window.location.href = 'status.html'; }
+      catch (erro) { mensagem.textContent = erro.message || 'Não foi possível confirmar o pedido.'; mensagem.className = 'mensagem erro'; document.querySelectorAll('button').forEach(botao => botao.disabled = false); }
     }
-  } catch (erro) {
-    localStorage.removeItem(chaveCarrinho);
-    sessionStorage.removeItem(chaveCarrinho);
-    localStorage.removeItem('carrinho');
-  }
-
-  const endereco = JSON.parse(localStorage.getItem('enderecoEntrega')) || {};
-  const usuario = JSON.parse(localStorage.getItem('usuarioLogado')) || {};
-
-  let total = 0;
-  carrinho.forEach(item => total += item.preco * item.quantidade);
-  total = Number(total.toFixed(2));
-  document.getElementById('valorTotal').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
- 
-  const btnGerarPix = document.getElementById('btnGerarPix');
-  const mensagem = document.getElementById('mensagem');
-  const areaInicial = document.getElementById('areaInicial');
-  const areaQrCode = document.getElementById('areaQrCode');
-  const statusPix = document.getElementById('statusPix');
-  const btnPagarCartao = document.getElementById('btnPagarCartao');
-  const areaCartao = document.getElementById('areaCartao');
-  const btnVoltarMetodos = document.getElementById('btnVoltarMetodos');
- 
-  let pagamentoId = null;
-  let intervaloChecagem = null;
-  let controladorCartao = null;
-
-  function validarTotalPagamento(valor, minimo = 0.01) {
-    return Number.isFinite(valor) && valor >= minimo && Number(valor.toFixed(2)) === valor;
-  }
-
-  function mensagemRecusaCartao(detalhe) {
-    const mensagens = {
-      cc_rejected_high_risk: 'Pagamento recusado por segurança pelo Mercado Pago. Não repita a tentativa agora; use outro meio de pagamento ou entre em contato com o Mercado Pago.',
-      cc_rejected_bad_filled_card_number: 'Confira o número do cartão.',
-      cc_rejected_bad_filled_date: 'Confira a validade do cartão.',
-      cc_rejected_bad_filled_security_code: 'Confira o código de segurança do cartão.',
-      cc_rejected_insufficient_amount: 'O cartão não possui limite ou saldo suficiente.',
-      cc_rejected_call_for_authorize: 'O banco precisa autorizar essa compra. Entre em contato com o emissor do cartão.',
-      cc_rejected_card_disabled: 'O cartão está bloqueado ou desativado. Entre em contato com o banco.',
-      cc_rejected_duplicated_payment: 'Uma cobrança igual já foi enviada. Aguarde e confira antes de tentar novamente.'
-    };
-
-    return mensagens[detalhe] || 'O pagamento não foi aprovado. Tente outro cartão ou pague com Pix.';
-  }
-
-  async function obterDeviceId() {
-    for (let tentativa = 0; tentativa < 20; tentativa += 1) {
-      const candidatos = [
-        window.MP_DEVICE_SESSION_ID,
-        typeof window.deviceId === 'string' ? window.deviceId : '',
-        document.getElementById('deviceId')?.value
-      ];
-      const deviceId = candidatos.find(valor => typeof valor === 'string' && valor.trim());
-      if (deviceId) return deviceId.trim();
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    return '';
-  }
-
-  async function aguardarMercadoPago() {
-    for (let tentativa = 0; tentativa < 30; tentativa += 1) {
-      if (typeof window.MercadoPago === 'function') return window.MercadoPago;
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    throw new Error('Não foi possível carregar o checkout do Mercado Pago. Atualize a página e tente novamente.');
-  }
-
-  async function inicializarCartao() {
-    if (controladorCartao) return;
-
-    if (!validarTotalPagamento(total, VALOR_MINIMO_CARTAO)) {
-      throw new Error(`O valor mínimo para pagar com cartão é R$ ${VALOR_MINIMO_CARTAO.toFixed(2).replace('.', ',')}.`);
-    }
-
-    const resposta = await fetch(`${URL_BACKEND}/api/pagamento-config`);
-    const config = await lerResposta(resposta);
-    if (!resposta.ok || !config.publicKey) {
-      throw new Error('O cartão ainda não está configurado no servidor. Adicione MP_PUBLIC_KEY no Render.');
-    }
-
-    const MercadoPagoSDK = await aguardarMercadoPago();
-    const mp = new MercadoPagoSDK(config.publicKey, { locale: 'pt-BR' });
-    const bricksBuilder = mp.bricks();
-    controladorCartao = await bricksBuilder.create('cardPayment', 'cardPaymentBrick_container', {
-      initialization: {
-        amount: total,
-        payer: { email: usuario.email || '' }
-      },
-      customization: {
-        visual: { style: { theme: 'default' } }
-      },
-      callbacks: {
-        onReady: () => {},
-        onError: erro => {
-          console.error('Erro no formulário de cartão:', erro);
-          mensagem.textContent = 'Não foi possível carregar o formulário do cartão.';
-          mensagem.className = 'mensagem erro';
-        },
-        onSubmit: async dadosCartao => {
-          try {
-            const documento = String(dadosCartao?.payer?.identification?.number || '').replace(/\D/g, '');
-            if (![11, 14].includes(documento.length)) {
-              throw new Error('Informe um CPF válido para continuar com o pagamento.');
-            }
-
-            const deviceId = await obterDeviceId();
-            const emailPagamento = String(dadosCartao?.payer?.email || '').trim().toLowerCase();
-            const nomeComprador = emailPagamento === 'test@testuser.com'
-              ? 'APRO'
-              : (usuario.nome || '');
-            const respostaPagamento = await fetch(`${URL_BACKEND}/api/pagamento-cartao`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                ...dadosCartao,
-                description: 'Pedido LosPizzanitos',
-                device_id: deviceId,
-                order: {
-                  buyer_name: nomeComprador,
-                  items: carrinho.map(item => ({
-                    id: item.id,
-                    title: item.nome,
-                    quantity: item.quantidade,
-                    unit_price: item.preco
-                  })),
-                  address: endereco
-                }
-              })
-            });
-            const dados = await lerResposta(respostaPagamento);
-            if (!respostaPagamento.ok) {
-              throw new Error(dados.erro || 'Não foi possível processar o cartão.');
-            }
-
-            if (dados.status === 'approved') {
-              pagamentoId = dados.id;
-              await salvarPedido(pagamentoId);
-              localStorage.removeItem(chaveCarrinho);
-              sessionStorage.removeItem(chaveCarrinho);
-              localStorage.removeItem('carrinho');
-              window.location.href = 'status.html';
-              return;
-            }
-
-            throw new Error(mensagemRecusaCartao(dados.detalhe));
-          } catch (erro) {
-            mensagem.textContent = erro.message || 'Não foi possível processar o cartão.';
-            mensagem.className = 'mensagem erro';
-            throw erro;
-          }
-        }
-      }
+    document.getElementById('btnCartaoEntrega').addEventListener('click', () => confirmarNaEntrega('cartao_entrega'));
+    document.getElementById('btnDinheiro').addEventListener('click', () => mostrarArea(areaDinheiro));
+    document.getElementById('btnConfirmarDinheiro').addEventListener('click', () => {
+      const texto = document.getElementById('trocoPara').value.trim().replace(/\s/g, '').replace('R$', '').replace('.', '').replace(',', '.'); const troco = texto ? Number(texto) : null;
+      if (texto && (!Number.isFinite(troco) || troco < total)) { mensagem.textContent = `O valor para troco deve ser igual ou maior que ${formatarPreco(total)}.`; mensagem.className = 'mensagem erro'; return; }
+      confirmarNaEntrega('dinheiro', troco);
     });
-  }
-
-  async function lerResposta(resposta) {
-    const tipo = resposta.headers.get('content-type') || '';
-    if (!tipo.includes('application/json')) {
-      throw new Error('O servidor de pagamentos ainda não foi atualizado. Publique o backend no Render.');
-    }
-
-    return resposta.json();
-  }
-
-  btnPagarCartao.addEventListener('click', async () => {
-    if (carrinho.length === 0) {
-      mensagem.textContent = 'Seu carrinho está vazio.';
-      mensagem.className = 'mensagem erro';
-      return;
-    }
-
-    btnPagarCartao.disabled = true;
-    btnGerarPix.disabled = true;
-    areaInicial.style.display = 'none';
-    areaCartao.style.display = 'block';
-
-    try {
-      await inicializarCartao();
-    } catch (erro) {
-      mensagem.textContent = erro.message || 'Não foi possível conectar ao servidor.';
-      mensagem.className = 'mensagem erro';
-      btnPagarCartao.disabled = false;
-      btnGerarPix.disabled = false;
-      areaCartao.style.display = 'none';
-      areaInicial.style.display = 'grid';
-    }
-  });
-
-  btnVoltarMetodos.addEventListener('click', () => {
-    if (controladorCartao) {
-      controladorCartao.unmount();
-      controladorCartao = null;
-    }
-    areaCartao.style.display = 'none';
-    areaInicial.style.display = 'grid';
-    btnPagarCartao.disabled = false;
-    btnGerarPix.disabled = false;
-  });
- 
-  btnGerarPix.addEventListener('click', async () => {
-    if (carrinho.length === 0) {
-      mensagem.textContent = 'Seu carrinho está vazio.';
-      mensagem.className = 'mensagem erro';
-      return;
-    }
- 
-    btnGerarPix.disabled = true;
-    btnGerarPix.querySelector('.metodo-titulo').textContent = 'Gerando Pix...';
- 
-    try {
-      const resposta = await fetch(`${URL_BACKEND}/api/pagamento-pix`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          valor: total,
-          descricao: 'Pedido LosPizzanitos',
-          nome: usuario.nome || 'Cliente',
-          email: usuario.email || '',
-          telefone: '',
-          cpf: ''
-        })
-      });
- 
-      const dados = await resposta.json();
- 
-      if (dados.erro) {
-        mensagem.textContent = dados.erro;
-        mensagem.className = 'mensagem erro';
-        btnGerarPix.disabled = false;
-        btnGerarPix.querySelector('.metodo-titulo').textContent = 'Pagar com Pix';
-        return;
-      }
- 
-      pagamentoId = dados.id;
-      document.getElementById('qrcodeImg').src = dados.qrCodeBase64;
-      document.getElementById('copiaCola').textContent = dados.codigoCopiaCola;
- 
-      areaInicial.style.display = 'none';
-      areaQrCode.style.display = 'block';
- 
-      // Checa o status a cada 5 segundos
-      intervaloChecagem = setInterval(checarStatus, 5000);
- 
-    } catch (erro) {
-      mensagem.textContent = 'Não foi possível conectar ao servidor.';
-      mensagem.className = 'mensagem erro';
-      btnGerarPix.disabled = false;
-      btnGerarPix.querySelector('.metodo-titulo').textContent = 'Pagar com Pix';
-    }
-  });
- 
-  async function checarStatus() {
-    if (!pagamentoId) return;
- 
-    try {
-      const resposta = await fetch(`${URL_BACKEND}/api/pagamento-status/${pagamentoId}`);
-      const dados = await resposta.json();
- 
-      if (dados.status === 'approved') {
-        clearInterval(intervaloChecagem);
-        statusPix.textContent = 'Pagamento confirmado! 🎉';
-        statusPix.className = 'status-pix pago';
- 
-        await salvarPedido();
-
-        localStorage.removeItem(chaveCarrinho);
-        sessionStorage.removeItem(chaveCarrinho);
-        localStorage.removeItem('carrinho');
-
-        setTimeout(() => {
-          window.location.href = 'status.html';
-        }, 2500);
-      } else if (dados.status === 'rejected') {
-        clearInterval(intervaloChecagem);
-        statusPix.textContent = 'O pagamento foi recusado. Gere um novo Pix.';
-      }
-    } catch (erro) {
-      // silencioso — tenta de novo no próximo intervalo
-    }
-  }
- 
-  async function salvarPedido(pagamentoIdInformado = pagamentoId) {
-    try {
-      await fetch(`${URL_BACKEND}/api/pedidos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: usuario.email || '',
-          nome: usuario.nome || 'Cliente',
-          itens: carrinho,
-          total: total,
-          endereco: endereco,
-          pagamento_id: pagamentoIdInformado
-        })
-      });
-    } catch (erro) {
-      // se falhar em salvar, o cliente ainda pagou — não trava a tela por isso
-    }
-  }
- 
-  document.getElementById('btnCopiar').addEventListener('click', () => {
-    const texto = document.getElementById('copiaCola').textContent;
-    navigator.clipboard.writeText(texto);
-    const btn = document.getElementById('btnCopiar');
-    const original = btn.textContent;
-    btn.textContent = 'COPIADO!';
-    setTimeout(() => btn.textContent = original, 1500);
-  });
-</script>
- 
+    document.querySelectorAll('[data-voltar]').forEach(botao => botao.addEventListener('click', () => { if (intervaloChecagem) clearInterval(intervaloChecagem); areaQrCode.style.display = 'none'; areaDinheiro.style.display = 'none'; areaInicial.style.display = 'grid'; mensagem.textContent = ''; }));
+    document.getElementById('btnGerarPix').addEventListener('click', async () => {
+      if (!carrinho.length || total <= 0) { mensagem.textContent = 'Seu carrinho está vazio.'; mensagem.className = 'mensagem erro'; return; }
+      const botao = document.getElementById('btnGerarPix'); botao.disabled = true; botao.querySelector('.metodo-titulo').textContent = 'Gerando Pix...';
+      try { const resposta = await fetch(`${URL_BACKEND}/api/pagamento-pix`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: total, descricao: 'Pedido LosPizzanitos', nome: usuario.nome || 'Cliente', email: usuario.email || '' }) }); const dados = await lerResposta(resposta); if (!resposta.ok || dados.erro) throw new Error(dados.erro || 'Não foi possível gerar o Pix.'); pagamentoId = dados.id; document.getElementById('qrcodeImg').src = dados.qrCodeBase64; document.getElementById('copiaCola').textContent = dados.codigoCopiaCola; mostrarArea(areaQrCode); intervaloChecagem = setInterval(checarStatus, 5000); }
+      catch (erro) { mensagem.textContent = erro.message || 'Não foi possível conectar ao servidor.'; mensagem.className = 'mensagem erro'; botao.disabled = false; botao.querySelector('.metodo-titulo').textContent = 'Pix agora'; }
+    });
+    async function checarStatus() { if (!pagamentoId) return; try { const resposta = await fetch(`${URL_BACKEND}/api/pagamento-status/${pagamentoId}`); const dados = await lerResposta(resposta); if (dados.status === 'approved') { clearInterval(intervaloChecagem); statusPix.textContent = 'Pagamento confirmado! Registrando pedido...'; statusPix.className = 'status-pix pago'; const pedido = await salvarPedido('pix', null, pagamentoId); sessionStorage.setItem('ultimoPedidoId', String(pedido.pedidoId)); limparCarrinho(); window.location.href = 'status.html'; } else if (dados.status === 'rejected') { clearInterval(intervaloChecagem); statusPix.textContent = 'O pagamento foi recusado. Escolha outra opção.'; } } catch (_erro) {} }
+    document.getElementById('btnCopiar').addEventListener('click', async () => { await navigator.clipboard.writeText(document.getElementById('copiaCola').textContent); const botao = document.getElementById('btnCopiar'); botao.textContent = 'COPIADO!'; setTimeout(() => { botao.textContent = 'COPIAR CÓDIGO PIX'; }, 1500); });
+  </script>
 </body>
 </html>

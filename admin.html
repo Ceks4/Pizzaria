@@ -71,7 +71,7 @@
       .pedido-lateral { padding: 12px; }
     }
   </style>
-  <link rel="stylesheet" href="comic.css?v=6">
+  <link rel="stylesheet" href="comic.css?v=7">
 </head>
 <body class="admin-page">
   <header class="topo">
@@ -115,6 +115,14 @@
     let intervaloAtualizacao = null;
     const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Finalizado', cancelado: 'Cancelado' };
+    const nomesPagamento = { pix: 'Pix — pago', cartao_entrega: 'Cartão na entrega', dinheiro: 'Dinheiro na entrega', nao_informado: 'Não informado' };
+
+    function formatarPagamento(pedido) {
+      if (pedido.forma_pagamento === 'dinheiro') {
+        return pedido.troco_para ? `Dinheiro na entrega\nTroco para ${formatarPreco(pedido.troco_para)}` : 'Dinheiro na entrega\nSem troco';
+      }
+      return nomesPagamento[pedido.forma_pagamento] || 'Não informado';
+    }
 
     async function lerResposta(resposta) {
       const tipo = resposta.headers.get('content-type') || '';
@@ -183,7 +191,7 @@
 
         const infoGrid = document.createElement('div');
         infoGrid.className = 'pedido-info-grid';
-        [['Cliente', `${pedido.cliente_nome || 'Não informado'}\n${pedido.cliente_email || ''}`], ['Entrega', destino]].forEach(([titulo, texto]) => {
+        [['Cliente', `${pedido.cliente_nome || 'Não informado'}\n${pedido.cliente_email || ''}`], ['Entrega', destino], ['Pagamento', formatarPagamento(pedido)]].forEach(([titulo, texto]) => {
           const info = document.createElement('section');
           info.className = 'pedido-info';
           const h4 = document.createElement('h4'); h4.textContent = titulo;
@@ -253,7 +261,7 @@
 
         const resumo = document.getElementById('resumoAdmin');
         resumo.innerHTML = [
-          ['Faturamento real', formatarPreco(dados.faturamento || 0)],
+          ['Total em pedidos', formatarPreco(dados.faturamento || 0)],
           ['Todos os pedidos', dados.total_pedidos || 0],
           ['Em andamento', dados.pedidos_em_andamento || 0],
           ['Cancelados', dados.pedidos_cancelados || 0]
@@ -281,8 +289,8 @@
     document.getElementById('filtroStatus').addEventListener('change', renderizarPedidos);
     document.getElementById('btnAtualizar').addEventListener('click', () => { carregarResumo(); carregarPedidos(); });
     document.getElementById('btnExportar').addEventListener('click', () => {
-      const linhas = [['Pedido', 'Tipo', 'Cliente', 'Email', 'Total', 'Status', 'Data']];
-      pedidos.forEach(pedido => linhas.push([pedido.id, pedido.teste ? 'Teste' : 'Real', pedido.cliente_nome || '', pedido.cliente_email || '', pedido.total, pedido.status, new Date(pedido.criado_em).toLocaleString('pt-BR')]));
+      const linhas = [['Pedido', 'Tipo', 'Cliente', 'Email', 'Total', 'Pagamento', 'Troco para', 'Status', 'Data']];
+      pedidos.forEach(pedido => linhas.push([pedido.id, pedido.teste ? 'Teste' : 'Real', pedido.cliente_nome || '', pedido.cliente_email || '', pedido.total, nomesPagamento[pedido.forma_pagamento] || 'Não informado', pedido.troco_para || '', pedido.status, new Date(pedido.criado_em).toLocaleString('pt-BR')]));
       const csv = linhas.map(linha => linha.map(valor => `"${String(valor).replace(/"/g, '""')}"`).join(';')).join('\n');
       const link = document.createElement('a');
       link.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
