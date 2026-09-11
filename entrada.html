@@ -6,7 +6,8 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <title>Los Pizzanitos</title>
     <link rel="stylesheet" href="entrada.css?v=3" />
-    <link rel="stylesheet" href="comic.css?v=2" />
+    <link rel="stylesheet" href="comic.css?v=3" />
+    <script>document.documentElement.classList.add('js');</script>
   </head>
   <body class="home-page">
     <header>
@@ -15,7 +16,8 @@
           <img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true" />
           <strong>Los Pizzanitos</strong>
         </div>
-        <div>
+        <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menuPrincipal"><span aria-hidden="true">☰</span> MENU</button>
+        <div class="menu-links" id="menuPrincipal">
           <a href="#inicio">Início</a>
           <a href="cardapio.html">Cardápio</a>
           <a href="#cardapio">Escolhas do chefe</a>
@@ -88,5 +90,19 @@
     <footer>
       <p>© 2026 Los Pizzanitos · Todos os direitos reservados.</p>
     </footer>
+    <script>
+      const botaoMenu = document.querySelector('.menu-toggle');
+      const menuPrincipal = document.getElementById('menuPrincipal');
+      botaoMenu.addEventListener('click', () => {
+        const aberto = menuPrincipal.classList.toggle('menu-aberto');
+        botaoMenu.setAttribute('aria-expanded', String(aberto));
+        botaoMenu.querySelector('span').textContent = aberto ? '×' : '☰';
+      });
+      menuPrincipal.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+        menuPrincipal.classList.remove('menu-aberto');
+        botaoMenu.setAttribute('aria-expanded', 'false');
+        botaoMenu.querySelector('span').textContent = '☰';
+      }));
+    </script>
   </body>
 </html>

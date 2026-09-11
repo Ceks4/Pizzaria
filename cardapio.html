@@ -6,7 +6,8 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title> Cardápio - Lospizzanitos</title>
 <link rel="stylesheet" href="cardapio.css?v=3">
-<link rel="stylesheet" href="comic.css?v=2">
+<link rel="stylesheet" href="comic.css?v=3">
+<script>document.documentElement.classList.add('js');</script>
 </head>
 <body class="menu-page">
 
@@ -19,7 +20,8 @@
         <p>Pizzaria sabor caseiro &middot; forno a lenha</p>
       </div>
     </div>
-    <nav class="menu">
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menuPrincipal"><span aria-hidden="true">☰</span> MENU</button>
+    <nav class="menu menu-links" id="menuPrincipal">
       <a href="entrada.html">Início</a>
       <a href="#tradicionais">Sabores</a>
       <a href="#ajuda">Ajuda e Suporte</a>
@@ -418,6 +420,21 @@
 <div class="carrinho-overlay" id="carrinhoOverlay" hidden></div>
 
 <script>
+  const botaoMenu = document.querySelector('.menu-toggle');
+  const menuPrincipal = document.getElementById('menuPrincipal');
+
+  botaoMenu.addEventListener('click', () => {
+    const aberto = menuPrincipal.classList.toggle('menu-aberto');
+    botaoMenu.setAttribute('aria-expanded', String(aberto));
+    botaoMenu.querySelector('span').textContent = aberto ? '×' : '☰';
+  });
+
+  menuPrincipal.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+    menuPrincipal.classList.remove('menu-aberto');
+    botaoMenu.setAttribute('aria-expanded', 'false');
+    botaoMenu.querySelector('span').textContent = '☰';
+  }));
+
   const URL_BACKEND = window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
     : 'https://pizzaria-asml.onrender.com';
