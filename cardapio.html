@@ -640,39 +640,7 @@
     const nome = item.querySelector('h4').textContent.trim();
     const precoElemento = item.querySelector('.preco');
     const precoTexto = precoElemento.textContent;
-    const preco = Number(precoTexto.replace('R
-
-  itensCarrinho.addEventListener('click', evento => {
-    const botaoRemover = evento.target.closest('[data-remover]');
-    if (!botaoRemover) return;
-    carrinho = carrinho.filter(item => String(item.id) !== botaoRemover.dataset.remover);
-    salvarCarrinho();
-    atualizarCarrinho();
-  });
-
-  function alternarCarrinho(aberto) {
-    painelCarrinho.hidden = !aberto;
-    overlayCarrinho.hidden = !aberto;
-    document.getElementById('btnCarrinho').setAttribute('aria-expanded', aberto);
-  }
-
-  document.getElementById('btnCarrinho').addEventListener('click', () => {
-    alternarCarrinho(painelCarrinho.hidden);
-  });
-  document.getElementById('fecharCarrinho').addEventListener('click', () => alternarCarrinho(false));
-  overlayCarrinho.addEventListener('click', () => alternarCarrinho(false));
-  finalizarCompra.addEventListener('click', () => {
-    if (carrinho.length > 0) {
-      salvarCarrinho();
-      window.location.href = 'finalizar.html';
-    }
-  });
-  atualizarCarrinho();
-</script>
-
-</body>
-</html>
-, '').replace('.', '').replace(',', '.').trim());
+    const preco = Number(precoTexto.replace('R$', '').replace('.', '').replace(',', '.').trim());
     const ehPizza = !item.closest('#bebidas');
     let seletorTamanho = null;
 
@@ -736,7 +704,7 @@
   itensCarrinho.addEventListener('click', evento => {
     const botaoRemover = evento.target.closest('[data-remover]');
     if (!botaoRemover) return;
-    carrinho = carrinho.filter(item => item.id !== Number(botaoRemover.dataset.remover));
+    carrinho = carrinho.filter(item => String(item.id) !== botaoRemover.dataset.remover);
     salvarCarrinho();
     atualizarCarrinho();
   });
