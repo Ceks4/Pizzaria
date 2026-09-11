@@ -6,7 +6,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title>Entrar — LosPizzanitos</title>
 <link rel="stylesheet" href="auth.css?v=3">
-<link rel="stylesheet" href="comic.css?v=7">
+<link rel="stylesheet" href="comic.css?v=8">
 </head>
 <body class="auth-page">
  
@@ -56,7 +56,7 @@
 
   try {
     const usuarioSalvo = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
-    if (usuarioSalvo && usuarioSalvo.email) {
+    if (usuarioSalvo && usuarioSalvo.email && localStorage.getItem('tokenSessao')) {
       window.location.href = 'cardapio.html';
     }
   } catch (erro) {
@@ -90,11 +90,12 @@
         };
 
         localStorage.setItem('usuarioLogado', JSON.stringify(usuario));
+        localStorage.setItem('tokenSessao', dados.token);
         mensagem.textContent = 'Login feito com sucesso!';
         mensagem.className = 'mensagem sucesso';
         setTimeout(() => window.location.href = 'cardapio.html', 800);
       } else {
-        mensagem.textContent = 'E-mail ou senha incorretos.';
+        mensagem.textContent = dados.erro || 'E-mail ou senha incorretos.';
         mensagem.className = 'mensagem erro';
       }
     } catch (erro) {

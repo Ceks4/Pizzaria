@@ -7,6 +7,26 @@
     --texto-suave: #7a6d66;
     --borda: #e0d3bd;
   }
+
+.carrinho-flutuante {
+  position: fixed;
+  right: 14px;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 80;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 10px 13px;
+  color: #07070c;
+  background: #9cf20d;
+  border: 3px solid #07070c;
+  box-shadow: 4px 4px 0 #6739d6;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.carrinho-flutuante strong { display: grid; width: 28px; height: 28px; place-items: center; color: #fff; background: #f13b3f; border: 2px solid #07070c; border-radius: 50%; }
+@media (max-width: 640px) { .carrinho-flutuante { display: flex; } }
   
   * {
     margin: 0;
@@ -196,6 +216,9 @@
     margin-top: 10px;
     color: var(--texto-suave);
   }
+
+  .destaque .status-loja { display: inline-flex; width: auto; margin-bottom: 12px; padding: 5px 10px; color: #07070c; background: #9cf20d; border: 2px solid #07070c; box-shadow: 2px 2px 0 #07070c; font-size: 12px; font-weight: 900; letter-spacing: .04em; }
+  .destaque .status-loja.fechado { color: #fff; background: #f13b3f; }
   
   .tamanhos {
     list-style: none;

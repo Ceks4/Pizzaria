@@ -6,7 +6,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title> Cardápio - Lospizzanitos</title>
 <link rel="stylesheet" href="cardapio.css?v=3">
-<link rel="stylesheet" href="comic.css?v=7">
+<link rel="stylesheet" href="comic.css?v=8">
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body class="menu-page">
@@ -40,6 +40,7 @@
 
 <section class="destaque">
   <div class="container">
+    <p class="status-loja" id="statusLoja">Consultando horário...</p>
     <h2>Cardápio</h2>
     <p>Massa de fermentação natural e ingredientes frescos.</p>
     <ul class="tamanhos">
@@ -406,6 +407,8 @@
   </div>
 </footer>
 
+<button type="button" class="carrinho-flutuante" id="btnCarrinhoFlutuante" aria-label="Abrir carrinho"><span>Ver carrinho</span><strong id="quantidadeCarrinhoFlutuante">0</strong></button>
+
 <div class="carrinho-painel" id="carrinhoPainel" hidden>
   <div class="carrinho-cabecalho">
     <h2>Seu carrinho</h2>
@@ -438,6 +441,11 @@
   const URL_BACKEND = window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
     : 'https://pizzaria-asml.onrender.com';
+  fetch(`${URL_BACKEND}/api/entrega/config`).then(r => r.json()).then(config => {
+    const status = document.getElementById('statusLoja');
+    status.textContent = config.aberto ? `ABERTO AGORA · ATÉ ${config.fechamento}` : `FECHADO · PEDIDOS DAS ${config.abertura} ÀS ${config.fechamento}`;
+    status.classList.toggle('fechado', !config.aberto);
+  }).catch(() => { document.getElementById('statusLoja').textContent = 'CONSULTE O HORÁRIO'; });
 
   const fotosPadrao = {
     'mussarela': 'assets/menu/pizza-mussarela.jpg',
@@ -571,13 +579,16 @@
   }
   const perfil = document.getElementById('perfil');
 
-  if (usuario) {
+  if (usuario && localStorage.getItem('tokenSessao')) {
     document.getElementById('perfilNome').textContent = usuario.nome;
     perfil.hidden = false;
   }
 
   document.getElementById('btnSair').addEventListener('click', () => {
+    const token = localStorage.getItem('tokenSessao');
+    if (token) fetch(`${URL_BACKEND}/api/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
     localStorage.removeItem('usuarioLogado');
+    localStorage.removeItem('tokenSessao');
     window.location.href = 'login.html';
   });
 
@@ -614,6 +625,7 @@
     const quantidade = carrinho.reduce((total, item) => total + item.quantidade, 0);
     const total = carrinho.reduce((soma, item) => soma + item.preco * item.quantidade, 0);
     quantidadeCarrinho.textContent = quantidade;
+    document.getElementById('quantidadeCarrinhoFlutuante').textContent = quantidade;
     totalCarrinho.textContent = formatarPreco(total);
     finalizarCompra.disabled = carrinho.length === 0;
 
@@ -625,13 +637,11 @@
     carrinho.forEach(item => {
       const linha = document.createElement('div');
       linha.className = 'carrinho-item';
-      linha.innerHTML = `
-        <div>
-          <strong>${item.nome}</strong>
-          <span>${item.quantidade} x ${formatarPreco(item.preco)}</span>
-        </div>
-        <button type="button" data-remover="${item.id}">Remover</button>
-      `;
+      const dados = document.createElement('div');
+      const nome = document.createElement('strong'); nome.textContent = item.nome;
+      const preco = document.createElement('span'); preco.textContent = `${item.quantidade} x ${formatarPreco(item.preco)}`;
+      const remover = document.createElement('button'); remover.type = 'button'; remover.dataset.remover = item.id; remover.textContent = 'Remover';
+      dados.append(nome, preco); linha.append(dados, remover);
       itensCarrinho.appendChild(linha);
     });
   }
@@ -717,6 +727,7 @@
   document.getElementById('btnCarrinho').addEventListener('click', () => {
     alternarCarrinho(painelCarrinho.hidden);
   });
+  document.getElementById('btnCarrinhoFlutuante').addEventListener('click', () => alternarCarrinho(true));
   document.getElementById('fecharCarrinho').addEventListener('click', () => alternarCarrinho(false));
   overlayCarrinho.addEventListener('click', () => alternarCarrinho(false));
   finalizarCompra.addEventListener('click', () => {
