@@ -53,6 +53,8 @@
     .badge.teste { background: #fff0b8; color: #744b00; }
     .atualizacao { color: #7a6a60; font-size: .76rem; margin: -8px 0 14px; }
     #painelConteudo[hidden], #loginAdmin[hidden] { display: none; }
+    .relatorio-dia{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;padding:14px;background:#211342;border:3px solid #07070c;color:#fff}.relatorio-dia strong{display:block;margin-top:4px;color:#9cf20d}.botoes-status{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.botoes-status button,.btn-pagamento,.btn-imprimir{min-height:38px;padding:6px;border:2px solid #07070c;background:#fff;font-weight:800;cursor:pointer}.btn-pagamento.pago{background:#9cf20d}.btn-imprimir{background:#ffd21f}.config-entrega{margin:20px 0;padding:16px;background:#f0ebff;border:3px solid #07070c}.config-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.config-entrega textarea{min-height:130px;font-family:monospace}.dias-config{display:flex;flex-wrap:wrap;gap:8px}.dias-config label{display:flex;gap:4px;align-items:center}.dias-config input{width:auto;margin:0}
+    @media print{body *{visibility:hidden}.pedido-card.imprimindo,.pedido-card.imprimindo *{visibility:visible}.pedido-card.imprimindo{position:absolute;inset:0;width:100%;box-shadow:none}}
     @media (max-width: 900px) { .resumo-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); } .pedido-card { grid-template-columns: 1fr; } }
     @media (max-width: 600px) {
       .painel-cabecalho { align-items: stretch; flex-direction: column; }
@@ -69,9 +71,11 @@
       .pedido-status-badge { align-self: flex-start; }
       .pedido-info-grid { grid-template-columns: 1fr; }
       .pedido-lateral { padding: 12px; }
+      .relatorio-dia { grid-template-columns: 1fr; }
+      .config-grid { grid-template-columns: 1fr; }
     }
   </style>
-  <link rel="stylesheet" href="comic.css?v=7">
+  <link rel="stylesheet" href="comic.css?v=8">
 </head>
 <body class="admin-page">
   <header class="topo">
@@ -96,8 +100,10 @@
         <div id="resumoAdmin" class="resumo-grid"></div>
         <p class="atualizacao" id="ultimaAtualizacao">Aguardando atualização...</p>
         <p class="mensagem" id="mensagemPedidos" role="status"></p>
-        <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar por cliente, e-mail ou número"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select></div>
+        <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar cliente, e-mail ou pedido"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select><input type="date" id="filtroData"><select id="filtroPagamento"><option value="">Todos os pagamentos</option><option value="pix">Pix</option><option value="cartao_entrega">Cartão na entrega</option><option value="dinheiro">Dinheiro</option></select></div>
+        <div class="relatorio-dia" id="relatorioDia"></div>
         <div class="lista-pedidos" id="listaPedidos" aria-live="polite"></div>
+        <details class="config-entrega"><summary><strong>CONFIGURAR ENTREGA E HORÁRIOS</strong></summary><form id="formConfigEntrega"><label><input id="configAtivo" type="checkbox"> Aceitar novos pedidos para entrega</label><div class="config-grid"><div><label>Cidade</label><input id="configCidade" required></div><div><label>Estado</label><input id="configEstado" maxlength="2" required></div><div><label>Abertura</label><input id="configAbertura" type="time" required></div><div><label>Fechamento</label><input id="configFechamento" type="time" required></div></div><label>Dias de funcionamento</label><div class="dias-config" id="configDias"></div><label for="configZonas">Regiões — uma por linha: Nome | CEP inicial | CEP final | Taxa | Prazo mínimo | Prazo máximo</label><textarea id="configZonas" required></textarea><button class="btn-principal" type="submit">SALVAR REGRAS</button><p class="mensagem" id="mensagemConfig"></p></form></details>
       </section>
     </div>
   </main>
@@ -113,14 +119,17 @@
     let pedidos = [];
     let autoAtualizar = true;
     let intervaloAtualizacao = null;
+    let pedidosConhecidos = null;
     const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Finalizado', cancelado: 'Cancelado' };
     const nomesPagamento = { pix: 'Pix — pago', cartao_entrega: 'Cartão na entrega', dinheiro: 'Dinheiro na entrega', nao_informado: 'Não informado' };
+    const escaparHtml = valor => String(valor ?? '').replace(/[&<>"']/g, caractere => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[caractere]));
 
     function formatarPagamento(pedido) {
       if (pedido.forma_pagamento === 'dinheiro') {
         return pedido.troco_para ? `Dinheiro na entrega\nTroco para ${formatarPreco(pedido.troco_para)}` : 'Dinheiro na entrega\nSem troco';
       }
+      if (pedido.forma_pagamento === 'cartao_entrega') return `Cartão de ${pedido.tipo_cartao === 'debito' ? 'débito' : 'crédito'} na entrega\n${pedido.pago ? 'PAGO' : 'PENDENTE'}`;
       return nomesPagamento[pedido.forma_pagamento] || 'Não informado';
     }
 
@@ -132,7 +141,7 @@
       return resposta.json();
     }
 
-    function mostrarPainel() { loginAdmin.hidden = true; painelConteudo.hidden = false; carregarResumo(); carregarPedidos(); }
+    function mostrarPainel() { loginAdmin.hidden = true; painelConteudo.hidden = false; carregarResumo(); carregarPedidos(); carregarConfigEntrega(); }
     function mostrarLogin() { loginAdmin.hidden = false; painelConteudo.hidden = true; }
 
     document.getElementById('formLoginAdmin').addEventListener('submit', async evento => {
@@ -156,9 +165,12 @@
       lista.innerHTML = '';
       const busca = document.getElementById('buscaPedidos').value.toLowerCase().trim();
       const status = document.getElementById('filtroStatus').value;
+      const dataFiltro = document.getElementById('filtroData').value;
+      const pagamentoFiltro = document.getElementById('filtroPagamento').value;
       const filtrados = pedidos.filter(pedido => {
         const correspondeBusca = !busca || String(pedido.id).includes(busca) || (pedido.cliente_nome || '').toLowerCase().includes(busca) || (pedido.cliente_email || '').toLowerCase().includes(busca);
-        return correspondeBusca && (!status || pedido.status === status);
+        const dataPedido = new Date(pedido.criado_em).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        return correspondeBusca && (!status || pedido.status === status) && (!dataFiltro || dataPedido === dataFiltro) && (!pagamentoFiltro || pedido.forma_pagamento === pagamentoFiltro);
       });
       if (filtrados.length === 0) { lista.innerHTML = '<div class="vazio">Nenhum pedido encontrado com esses filtros.</div>'; return; }
       filtrados.forEach(pedido => {
@@ -246,7 +258,11 @@
           atualizarStatus(pedido.id, seletorStatus.value);
         });
         acao.append(labelStatus, seletorStatus);
-        lateral.append(tituloItens, listaItens, total, acao);
+        const botoesStatus = document.createElement('div'); botoesStatus.className = 'botoes-status';
+        [['em_preparacao','PREPARANDO'],['saiu_para_entrega','ENVIAR'],['concluido','FINALIZAR']].forEach(([valor, rotulo]) => { const botao = document.createElement('button'); botao.type='button'; botao.textContent=rotulo; botao.disabled=pedido.status===valor; botao.onclick=()=>atualizarStatus(pedido.id,valor); botoesStatus.appendChild(botao); });
+        const botaoPago = document.createElement('button'); botaoPago.type='button'; botaoPago.className=`btn-pagamento${pedido.pago?' pago':''}`; botaoPago.textContent=pedido.pago?'PAGAMENTO RECEBIDO':'MARCAR COMO PAGO'; botaoPago.onclick=()=>atualizarPagamento(pedido.id,!pedido.pago);
+        const imprimir = document.createElement('button'); imprimir.type='button'; imprimir.className='btn-imprimir'; imprimir.textContent='IMPRIMIR COMANDA'; imprimir.onclick=()=>{cartao.classList.add('imprimindo');window.print();cartao.classList.remove('imprimindo')};
+        lateral.append(tituloItens, listaItens, total, acao, botoesStatus, botaoPago, imprimir);
         cartao.append(conteudo, lateral);
         lista.appendChild(cartao);
       });
@@ -279,14 +295,20 @@
         const dados = await lerResposta(resposta);
         if (resposta.status === 401) { localStorage.removeItem('tokenAdmin'); mostrarLogin(); return; }
         if (!resposta.ok) throw new Error(dados.erro);
+        const idsNovos = dados.pedidos.map(pedido => Number(pedido.id));
+        if (pedidosConhecidos && idsNovos.some(id => !pedidosConhecidos.has(id))) tocarSomNovoPedido();
+        pedidosConhecidos = new Set(idsNovos);
         pedidos = dados.pedidos;
         renderizarPedidos();
+        renderizarRelatorio();
         mensagem.textContent = '';
         document.getElementById('ultimaAtualizacao').textContent = `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
       } catch (erro) { mensagem.textContent = erro.message || 'Não foi possível carregar os pedidos.'; mensagem.className = 'mensagem erro'; }
     }
     document.getElementById('buscaPedidos').addEventListener('input', renderizarPedidos);
     document.getElementById('filtroStatus').addEventListener('change', renderizarPedidos);
+    document.getElementById('filtroData').addEventListener('change', () => { renderizarPedidos(); renderizarRelatorio(); });
+    document.getElementById('filtroPagamento').addEventListener('change', renderizarPedidos);
     document.getElementById('btnAtualizar').addEventListener('click', () => { carregarResumo(); carregarPedidos(); });
     document.getElementById('btnExportar').addEventListener('click', () => {
       const linhas = [['Pedido', 'Tipo', 'Cliente', 'Email', 'Total', 'Pagamento', 'Troco para', 'Status', 'Data']];
@@ -316,6 +338,25 @@
         document.getElementById('mensagemPedidos').className = 'mensagem erro';
       }
     }
+    function tocarSomNovoPedido() {
+      try { const contexto = new (window.AudioContext || window.webkitAudioContext)(); const oscilador = contexto.createOscillator(); const ganho = contexto.createGain(); oscilador.frequency.value = 880; ganho.gain.value = .15; oscilador.connect(ganho); ganho.connect(contexto.destination); oscilador.start(); setTimeout(() => { oscilador.stop(); contexto.close(); }, 450); } catch (_erro) {}
+    }
+    function renderizarRelatorio() {
+      const dataEscolhida = document.getElementById('filtroData').value || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+      const doDia = pedidos.filter(pedido => new Date(pedido.criado_em).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) === dataEscolhida && pedido.status !== 'cancelado' && !pedido.teste);
+      const faturamento = doDia.reduce((soma, pedido) => soma + Number(pedido.total || 0), 0);
+      const produtos = new Map(); doDia.forEach(pedido => (pedido.itens || []).forEach(item => produtos.set(item.nome, (produtos.get(item.nome) || 0) + Number(item.quantidade || 0))));
+      const maisVendido = [...produtos.entries()].sort((a,b) => b[1] - a[1])[0];
+      document.getElementById('relatorioDia').innerHTML = `<div><small>Pedidos do dia</small><strong>${doDia.length}</strong></div><div><small>Total do dia</small><strong>${formatarPreco(faturamento)}</strong></div><div><small>Mais pedido</small><strong>${maisVendido ? `${escaparHtml(maisVendido[0])} (${maisVendido[1]}x)` : '—'}</strong></div>`;
+    }
+    async function atualizarPagamento(id, pago) {
+      try { const resposta = await fetch(`${API}/api/admin/pedidos/${id}/pagamento`, { method:'PATCH', headers:{'Content-Type':'application/json',Authorization:`Bearer ${tokenSalvo()}`}, body:JSON.stringify({pago}) }); const dados=await lerResposta(resposta); if(!resposta.ok)throw new Error(dados.erro); await carregarPedidos(); }
+      catch(erro){document.getElementById('mensagemPedidos').textContent=erro.message;document.getElementById('mensagemPedidos').className='mensagem erro'}
+    }
+    const nomesDias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    document.getElementById('configDias').innerHTML=nomesDias.map((nome,i)=>`<label><input type="checkbox" value="${i}">${nome}</label>`).join('');
+    async function carregarConfigEntrega(){try{const resposta=await fetch(`${API}/api/admin/config-entrega`,{headers:{Authorization:`Bearer ${tokenSalvo()}`}});const dados=await lerResposta(resposta);if(!resposta.ok)throw new Error(dados.erro);const c=dados.config;document.getElementById('configAtivo').checked=Boolean(c.ativo);document.getElementById('configCidade').value=c.cidade;document.getElementById('configEstado').value=c.estado;document.getElementById('configAbertura').value=c.abertura;document.getElementById('configFechamento').value=c.fechamento;document.querySelectorAll('#configDias input').forEach(input=>input.checked=c.dias.includes(Number(input.value)));document.getElementById('configZonas').value=c.zonas.map(z=>`${z.nome} | ${z.cep_inicio} | ${z.cep_fim} | ${z.taxa} | ${z.prazo_min} | ${z.prazo_max}`).join('\n')}catch(_erro){}}
+    document.getElementById('formConfigEntrega').addEventListener('submit',async evento=>{evento.preventDefault();const mensagem=document.getElementById('mensagemConfig');try{const zonas=document.getElementById('configZonas').value.split('\n').filter(Boolean).map(linha=>{const [nome,cep_inicio,cep_fim,taxa,prazo_min,prazo_max]=linha.split('|').map(v=>v.trim());return{nome,cep_inicio,cep_fim,taxa:Number(taxa.replace(',','.')),prazo_min:Number(prazo_min),prazo_max:Number(prazo_max)}});const config={ativo:document.getElementById('configAtivo').checked,cidade:document.getElementById('configCidade').value,estado:document.getElementById('configEstado').value,dias:[...document.querySelectorAll('#configDias input:checked')].map(i=>Number(i.value)),abertura:document.getElementById('configAbertura').value,fechamento:document.getElementById('configFechamento').value,zonas};const resposta=await fetch(`${API}/api/admin/config-entrega`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${tokenSalvo()}`},body:JSON.stringify({config})});const dados=await lerResposta(resposta);if(!resposta.ok)throw new Error(dados.erro);mensagem.textContent='Regras salvas.';mensagem.className='mensagem sucesso'}catch(erro){mensagem.textContent=erro.message;mensagem.className='mensagem erro'}});
     document.getElementById('btnSairAdmin').addEventListener('click', () => { localStorage.removeItem('tokenAdmin'); mostrarLogin(); });
     intervaloAtualizacao = setInterval(() => { if (autoAtualizar && !painelConteudo.hidden) { carregarResumo(); carregarPedidos(); } }, 30000);
     if (tokenSalvo()) mostrarPainel();

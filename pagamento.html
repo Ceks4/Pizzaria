@@ -22,7 +22,7 @@
     .metodo-detalhe { color: #565064; font-size: .78rem; line-height: 1.35; }
     .metodo-seta { color: #6739d6; font-size: 1.5rem; font-weight: 900; }
     .nota-entrega { margin-top: 16px; padding: 11px 13px; color: #332d40; background: #eefbcf; border: 2px solid #07070c; font-size: .8rem; line-height: 1.45; }
-    #areaQrCode, #areaDinheiro { display: none; }
+    #areaQrCode, #areaDinheiro, #areaCartao { display: none; }
     #qrcodeImg { display: block; width: min(230px, 100%); height: auto; aspect-ratio: 1; margin: 0 auto 16px; background: #fff; border: 3px solid #07070c; }
     .copia-cola { margin-bottom: 12px; padding: 11px; overflow-wrap: anywhere; color: #332d40; background: #f0ebff; border: 2px solid #07070c; font-size: .72rem; text-align: left; }
     .btn-copiar, .btn-confirmar-entrega, .btn-voltar-metodos { min-height: 44px; padding: 9px 13px; border: 3px solid #07070c; font-weight: 900; cursor: pointer; }
@@ -36,7 +36,7 @@
     .campo-troco small { display: block; margin-top: 6px; color: #625d6b; font-size: .74rem; }
     @media (max-width: 430px) { .metodo-pagamento { grid-template-columns: 42px 1fr; gap: 10px; padding: 10px; } .metodo-icone { width: 40px; height: 40px; } .metodo-seta { display: none; } .metodo-titulo { font-size: .78rem; } }
   </style>
-  <link rel="stylesheet" href="comic.css?v=7">
+  <link rel="stylesheet" href="comic.css?v=8">
 </head>
 <body class="payment-page">
   <header class="topo"><div class="marca"><img class="marca-logo" src="favicon.svg" alt="" aria-hidden="true"><div><h1>LOSPIZZANITOS</h1><p>Pizzaria sabor caseiro · forno a lenha</p></div></div><nav><a class="btn-voltar-pagina" href="finalizar.html">&#8592; VOLTAR</a><a href="cardapio.html">CARDÁPIO</a></nav></header>
@@ -51,48 +51,53 @@
     <p class="mensagem" id="mensagem" role="status" aria-live="polite"></p>
     <div id="areaQrCode"><h3 class="area-titulo">Pague com Pix</h3><img id="qrcodeImg" alt="QR Code Pix"><div class="copia-cola" id="copiaCola"></div><button class="btn-copiar" id="btnCopiar" type="button">COPIAR CÓDIGO PIX</button><p class="status-pix" id="statusPix">Aguardando pagamento...</p><button class="btn-voltar-metodos" data-voltar type="button">&#8592; OUTRAS OPÇÕES</button></div>
     <div id="areaDinheiro"><h3 class="area-titulo">Dinheiro na entrega</h3><p class="area-texto">Se precisar de troco, informe o valor que entregará ao entregador.</p><div class="campo-troco"><label for="trocoPara">Troco para</label><input id="trocoPara" type="text" inputmode="decimal" placeholder="Ex.: 100,00"><small>Deixe vazio se não precisar de troco.</small></div><button class="btn-confirmar-entrega" id="btnConfirmarDinheiro" type="button">CONFIRMAR PEDIDO</button><button class="btn-voltar-metodos" data-voltar type="button">&#8592; OUTRAS OPÇÕES</button></div>
+    <div id="areaCartao"><h3 class="area-titulo">Cartão na entrega</h3><p class="area-texto">Qual tipo de cartão será usado na maquininha?</p><button class="btn-confirmar-entrega" id="btnCredito" type="button">CRÉDITO</button><button class="btn-confirmar-entrega" id="btnDebito" type="button" style="margin-top:10px">DÉBITO</button><button class="btn-voltar-metodos" data-voltar type="button">&#8592; OUTRAS OPÇÕES</button></div>
   </div></main>
   <script>
     const URL_BACKEND = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://pizzaria-asml.onrender.com';
-    const chaveCarrinho = 'carrinhoPizzaria';
+    const chaveCarrinho = 'carrinhoPizzaria', token = localStorage.getItem('tokenSessao');
     const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     let carrinho = [], pagamentoId = null, intervaloChecagem = null;
     try { carrinho = JSON.parse(localStorage.getItem(chaveCarrinho) || sessionStorage.getItem(chaveCarrinho) || '[]'); if (!Array.isArray(carrinho)) carrinho = []; } catch (_erro) { carrinho = []; }
-    let endereco = {}, usuario = {};
+    let endereco = {}, entrega = {};
     try { endereco = JSON.parse(localStorage.getItem('enderecoEntrega') || '{}'); } catch (_erro) {}
-    try { usuario = JSON.parse(localStorage.getItem('usuarioLogado') || '{}'); } catch (_erro) {}
-    const total = Number(carrinho.reduce((soma, item) => soma + Number(item.preco) * Number(item.quantidade), 0).toFixed(2));
+    try { entrega = JSON.parse(localStorage.getItem('entregaCalculada') || '{}'); } catch (_erro) {}
+    if (!token) window.location.href = 'login.html';
+    const total = Number((carrinho.reduce((soma, item) => soma + Number(item.preco) * Number(item.quantidade), 0) + Number(entrega.taxa || 0)).toFixed(2));
     document.getElementById('valorTotal').textContent = formatarPreco(total);
-    const areaInicial = document.getElementById('areaInicial'), areaQrCode = document.getElementById('areaQrCode'), areaDinheiro = document.getElementById('areaDinheiro'), mensagem = document.getElementById('mensagem'), statusPix = document.getElementById('statusPix');
+    const areaInicial = document.getElementById('areaInicial'), areaQrCode = document.getElementById('areaQrCode'), areaDinheiro = document.getElementById('areaDinheiro'), areaCartao = document.getElementById('areaCartao'), mensagem = document.getElementById('mensagem'), statusPix = document.getElementById('statusPix');
+    let chaveIdempotencia = sessionStorage.getItem('chavePedidoAtual'); if (!chaveIdempotencia) { chaveIdempotencia = crypto.randomUUID(); sessionStorage.setItem('chavePedidoAtual', chaveIdempotencia); }
 
     async function lerResposta(resposta) { const tipo = resposta.headers.get('content-type') || ''; if (!tipo.includes('application/json')) throw new Error('O servidor não respondeu corretamente. Tente novamente.'); return resposta.json(); }
-    function limparCarrinho() { localStorage.removeItem(chaveCarrinho); sessionStorage.removeItem(chaveCarrinho); localStorage.removeItem('carrinho'); }
-    function mostrarArea(area) { areaInicial.style.display = 'none'; areaQrCode.style.display = 'none'; areaDinheiro.style.display = 'none'; area.style.display = 'block'; mensagem.textContent = ''; }
-    async function salvarPedido(formaPagamento, trocoPara = null, pagamentoIdInformado = null) {
-      const resposta = await fetch(`${URL_BACKEND}/api/pedidos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: usuario.email || '', nome: usuario.nome || 'Cliente', itens: carrinho, total, endereco, pagamento_id: pagamentoIdInformado, forma_pagamento: formaPagamento, troco_para: trocoPara }) });
+    function limparCarrinho() { localStorage.removeItem(chaveCarrinho); sessionStorage.removeItem(chaveCarrinho); localStorage.removeItem('carrinho'); localStorage.removeItem('entregaCalculada'); sessionStorage.removeItem('chavePedidoAtual'); }
+    function mostrarArea(area) { areaInicial.style.display = 'none'; areaQrCode.style.display = 'none'; areaDinheiro.style.display = 'none'; areaCartao.style.display = 'none'; area.style.display = 'block'; mensagem.textContent = ''; }
+    async function salvarPedido(formaPagamento, trocoPara = null, pagamentoIdInformado = null, tipoCartao = null) {
+      const resposta = await fetch(`${URL_BACKEND}/api/pedidos`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'Idempotency-Key': chaveIdempotencia }, body: JSON.stringify({ itens: carrinho, endereco, pagamento_id: pagamentoIdInformado, forma_pagamento: formaPagamento, troco_para: trocoPara, tipo_cartao: tipoCartao, chave_idempotencia: chaveIdempotencia }) });
       const dados = await lerResposta(resposta); if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível registrar o pedido.'); return dados;
     }
-    async function confirmarNaEntrega(formaPagamento, trocoPara = null) {
+    async function confirmarNaEntrega(formaPagamento, trocoPara = null, tipoCartao = null) {
       if (!carrinho.length || total <= 0) { mensagem.textContent = 'Seu carrinho está vazio.'; mensagem.className = 'mensagem erro'; return; }
       document.querySelectorAll('button').forEach(botao => botao.disabled = true); mensagem.textContent = 'Confirmando seu pedido...'; mensagem.className = 'mensagem';
-      try { const dados = await salvarPedido(formaPagamento, trocoPara); sessionStorage.setItem('ultimoPedidoId', String(dados.pedidoId)); limparCarrinho(); window.location.href = 'status.html'; }
+      try { const dados = await salvarPedido(formaPagamento, trocoPara, null, tipoCartao); sessionStorage.setItem('ultimoPedidoId', String(dados.pedidoId)); limparCarrinho(); window.location.href = 'status.html'; }
       catch (erro) { mensagem.textContent = erro.message || 'Não foi possível confirmar o pedido.'; mensagem.className = 'mensagem erro'; document.querySelectorAll('button').forEach(botao => botao.disabled = false); }
     }
-    document.getElementById('btnCartaoEntrega').addEventListener('click', () => confirmarNaEntrega('cartao_entrega'));
+    document.getElementById('btnCartaoEntrega').addEventListener('click', () => mostrarArea(areaCartao));
+    document.getElementById('btnCredito').addEventListener('click', () => confirmarNaEntrega('cartao_entrega', null, 'credito'));
+    document.getElementById('btnDebito').addEventListener('click', () => confirmarNaEntrega('cartao_entrega', null, 'debito'));
     document.getElementById('btnDinheiro').addEventListener('click', () => mostrarArea(areaDinheiro));
     document.getElementById('btnConfirmarDinheiro').addEventListener('click', () => {
       const texto = document.getElementById('trocoPara').value.trim().replace(/\s/g, '').replace('R$', '').replace('.', '').replace(',', '.'); const troco = texto ? Number(texto) : null;
       if (texto && (!Number.isFinite(troco) || troco < total)) { mensagem.textContent = `O valor para troco deve ser igual ou maior que ${formatarPreco(total)}.`; mensagem.className = 'mensagem erro'; return; }
       confirmarNaEntrega('dinheiro', troco);
     });
-    document.querySelectorAll('[data-voltar]').forEach(botao => botao.addEventListener('click', () => { if (intervaloChecagem) clearInterval(intervaloChecagem); areaQrCode.style.display = 'none'; areaDinheiro.style.display = 'none'; areaInicial.style.display = 'grid'; mensagem.textContent = ''; }));
+    document.querySelectorAll('[data-voltar]').forEach(botao => botao.addEventListener('click', () => { if (intervaloChecagem) clearInterval(intervaloChecagem); areaQrCode.style.display = 'none'; areaDinheiro.style.display = 'none'; areaCartao.style.display = 'none'; areaInicial.style.display = 'grid'; mensagem.textContent = ''; }));
     document.getElementById('btnGerarPix').addEventListener('click', async () => {
       if (!carrinho.length || total <= 0) { mensagem.textContent = 'Seu carrinho está vazio.'; mensagem.className = 'mensagem erro'; return; }
       const botao = document.getElementById('btnGerarPix'); botao.disabled = true; botao.querySelector('.metodo-titulo').textContent = 'Gerando Pix...';
-      try { const resposta = await fetch(`${URL_BACKEND}/api/pagamento-pix`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: total, descricao: 'Pedido LosPizzanitos', nome: usuario.nome || 'Cliente', email: usuario.email || '' }) }); const dados = await lerResposta(resposta); if (!resposta.ok || dados.erro) throw new Error(dados.erro || 'Não foi possível gerar o Pix.'); pagamentoId = dados.id; document.getElementById('qrcodeImg').src = dados.qrCodeBase64; document.getElementById('copiaCola').textContent = dados.codigoCopiaCola; mostrarArea(areaQrCode); intervaloChecagem = setInterval(checarStatus, 5000); }
+      try { const resposta = await fetch(`${URL_BACKEND}/api/pagamento-pix`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ itens: carrinho, endereco }) }); const dados = await lerResposta(resposta); if (!resposta.ok || dados.erro) throw new Error(dados.erro || 'Não foi possível gerar o Pix.'); pagamentoId = dados.id; document.getElementById('valorTotal').textContent = formatarPreco(dados.total); document.getElementById('qrcodeImg').src = dados.qrCodeBase64; document.getElementById('copiaCola').textContent = dados.codigoCopiaCola; mostrarArea(areaQrCode); intervaloChecagem = setInterval(checarStatus, 5000); }
       catch (erro) { mensagem.textContent = erro.message || 'Não foi possível conectar ao servidor.'; mensagem.className = 'mensagem erro'; botao.disabled = false; botao.querySelector('.metodo-titulo').textContent = 'Pix agora'; }
     });
-    async function checarStatus() { if (!pagamentoId) return; try { const resposta = await fetch(`${URL_BACKEND}/api/pagamento-status/${pagamentoId}`); const dados = await lerResposta(resposta); if (dados.status === 'approved') { clearInterval(intervaloChecagem); statusPix.textContent = 'Pagamento confirmado! Registrando pedido...'; statusPix.className = 'status-pix pago'; const pedido = await salvarPedido('pix', null, pagamentoId); sessionStorage.setItem('ultimoPedidoId', String(pedido.pedidoId)); limparCarrinho(); window.location.href = 'status.html'; } else if (dados.status === 'rejected') { clearInterval(intervaloChecagem); statusPix.textContent = 'O pagamento foi recusado. Escolha outra opção.'; } } catch (_erro) {} }
+    async function checarStatus() { if (!pagamentoId) return; try { const resposta = await fetch(`${URL_BACKEND}/api/pagamento-status/${pagamentoId}`, { headers: { Authorization: `Bearer ${token}` } }); const dados = await lerResposta(resposta); if (dados.status === 'approved') { clearInterval(intervaloChecagem); statusPix.textContent = 'Pagamento confirmado! Registrando pedido...'; statusPix.className = 'status-pix pago'; const pedido = await salvarPedido('pix', null, pagamentoId); sessionStorage.setItem('ultimoPedidoId', String(pedido.pedidoId)); limparCarrinho(); window.location.href = 'status.html'; } else if (dados.status === 'rejected') { clearInterval(intervaloChecagem); statusPix.textContent = 'O pagamento foi recusado. Escolha outra opção.'; } } catch (_erro) {} }
     document.getElementById('btnCopiar').addEventListener('click', async () => { await navigator.clipboard.writeText(document.getElementById('copiaCola').textContent); const botao = document.getElementById('btnCopiar'); botao.textContent = 'COPIADO!'; setTimeout(() => { botao.textContent = 'COPIAR CÓDIGO PIX'; }, 1500); });
   </script>
 </body>
