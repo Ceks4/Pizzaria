@@ -7,24 +7,42 @@
   <title>Painel administrativo - LosPizzanitos</title>
   <link rel="stylesheet" href="auth.css?v=3">
   <style>
-    .card { max-width: 1120px; }
+    .card { max-width: 1180px; }
     .painel { width: 100%; }
     .painel-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
     .painel-cabecalho h2 { margin: 0; }
     .acoes-painel { display: flex; flex-wrap: wrap; gap: 8px; }
     .btn-secundario { border: 1px solid #d7b8a4; border-radius: 999px; background: #fffaf5; color: #7c3426; padding: 10px 14px; font-weight: 800; cursor: pointer; transition: .2s ease; }
     .btn-secundario:hover { background: #a0522d; color: #fff; }
-    .tabela-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 780px; overflow: hidden; border: 1px solid #eadbca; border-radius: 14px; }
-    th, td { padding: 13px 10px; border-bottom: 1px solid #e0d8cc; text-align: left; vertical-align: top; font-size: .86rem; }
-    th { position: sticky; top: 0; color: #5c1f1f; background: #f9ecdf; font-size: .75rem; letter-spacing: .6px; text-transform: uppercase; }
-    td { color: #3a2a24; }
-    tbody tr { background: #fff; transition: background .2s ease; }
-    tbody tr:hover { background: #fffaf5; }
-    .detalhes { white-space: pre-line; }
-    .vazio { color: #7a6a60; padding: 24px 0; }
+    .lista-pedidos { display: grid; gap: 18px; }
+    .pedido-card { position: relative; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, .65fr); gap: 18px; padding: 20px; color: #07070c; background: #fffef5; border: 3px solid #07070c; box-shadow: 5px 5px 0 #6739d6; }
+    .pedido-card[data-status="em_preparacao"] { border-left: 9px solid #ffd21f; }
+    .pedido-card[data-status="saiu_para_entrega"] { border-left: 9px solid #28d7e5; }
+    .pedido-card[data-status="concluido"] { border-left: 9px solid #9cf20d; }
+    .pedido-card[data-status="cancelado"] { border-left: 9px solid #f13b3f; }
+    .pedido-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 16px; padding-bottom: 13px; border-bottom: 3px solid #07070c; }
+    .pedido-numero { margin: 0; font: italic 900 1.35rem/1 Impact, "Arial Black", sans-serif; letter-spacing: .05em; }
+    .pedido-data { display: block; margin-top: 6px; color: #625d6b; font-size: .76rem; font-weight: 700; }
+    .pedido-status-badge { display: inline-flex; align-items: center; min-height: 30px; padding: 5px 9px; border: 2px solid #07070c; font-size: .7rem; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; box-shadow: 2px 2px 0 #07070c; }
+    .pedido-status-badge.em_preparacao { background: #ffd21f; }
+    .pedido-status-badge.saiu_para_entrega { background: #28d7e5; }
+    .pedido-status-badge.concluido { background: #9cf20d; }
+    .pedido-status-badge.cancelado { color: #fff; background: #f13b3f; }
+    .pedido-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .pedido-info { min-width: 0; }
+    .pedido-info h4, .pedido-lateral h4 { margin: 0 0 6px; color: #6739d6; font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .pedido-info p { margin: 0; overflow-wrap: anywhere; font-size: .88rem; line-height: 1.5; white-space: pre-line; }
+    .pedido-lateral { display: flex; flex-direction: column; gap: 15px; padding: 15px; background: #f0ebff; border: 3px solid #07070c; }
+    .pedido-itens { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .pedido-item-admin { display: flex; justify-content: space-between; gap: 10px; padding-bottom: 6px; border-bottom: 1px dashed #625d6b; font-size: .83rem; line-height: 1.35; }
+    .pedido-item-admin strong { flex: 0 0 auto; }
+    .pedido-total { display: flex; align-items: end; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 3px solid #07070c; }
+    .pedido-total strong { color: #6739d6; font: 900 1.3rem/1 "Arial Black", Arial, sans-serif; }
+    .pedido-acao label { display: block; margin-bottom: 6px; }
+    .pedido-acao .status-select { width: 100%; min-height: 44px; }
+    .vazio { padding: 34px 20px; color: #4d475a; background: #f0ebff; border: 3px dashed #07070c; font-weight: 800; text-align: center; }
     .status-select { border: 1px solid #e0d8cc; border-radius: 999px; padding: 8px 10px; color: #3a2a24; background: #faf8f4; }
-    .filtros { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    .filtros { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(190px, .35fr); gap: 10px; margin-bottom: 18px; }
     .filtros input, .filtros select { margin: 0; }
     .filtros input { flex: 1; }
     .resumo-grid { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -35,10 +53,25 @@
     .badge.teste { background: #fff0b8; color: #744b00; }
     .atualizacao { color: #7a6a60; font-size: .76rem; margin: -8px 0 14px; }
     #painelConteudo[hidden], #loginAdmin[hidden] { display: none; }
-    @media (max-width: 900px) { .resumo-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); } }
-    @media (max-width: 600px) { .painel-cabecalho { align-items: flex-start; flex-direction: column; } .resumo-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) { .resumo-grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); } .pedido-card { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) {
+      .painel-cabecalho { align-items: stretch; flex-direction: column; }
+      .painel-cabecalho h2 { font-size: clamp(1.75rem, 10vw, 2.6rem); }
+      .acoes-painel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .btn-secundario { min-height: 44px; padding: 9px 7px; font-size: .72rem; }
+      .resumo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+      .resumo-card { padding: 13px 11px; }
+      .resumo-card small { font-size: .63rem; }
+      .resumo-card strong { font-size: 1.05rem; overflow-wrap: anywhere; }
+      .filtros { grid-template-columns: 1fr; }
+      .pedido-card { gap: 13px; padding: 14px; box-shadow: 4px 4px 0 #6739d6; }
+      .pedido-topo { align-items: stretch; flex-direction: column; }
+      .pedido-status-badge { align-self: flex-start; }
+      .pedido-info-grid { grid-template-columns: 1fr; }
+      .pedido-lateral { padding: 12px; }
+    }
   </style>
-  <link rel="stylesheet" href="comic.css?v=1">
+  <link rel="stylesheet" href="comic.css?v=2">
 </head>
 <body class="admin-page">
   <header class="topo">
@@ -64,7 +97,7 @@
         <p class="atualizacao" id="ultimaAtualizacao">Aguardando atualização...</p>
         <p class="mensagem" id="mensagemPedidos" role="status"></p>
         <div class="filtros"><input type="search" id="buscaPedidos" placeholder="Buscar por cliente, e-mail ou número"><select id="filtroStatus"><option value="">Todos os status</option><option value="em_preparacao">Em preparação</option><option value="saiu_para_entrega">Saiu para entrega</option><option value="concluido">Finalizado</option><option value="cancelado">Cancelado</option></select></div>
-        <div class="tabela-wrap"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Itens</th><th>Entrega</th><th>Total</th><th>Status</th><th>Data</th></tr></thead><tbody id="listaPedidos"></tbody></table></div>
+        <div class="lista-pedidos" id="listaPedidos" aria-live="polite"></div>
       </section>
     </div>
   </main>
@@ -81,6 +114,7 @@
     let autoAtualizar = true;
     let intervaloAtualizacao = null;
     const formatarPreco = valor => Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const nomesStatus = { em_preparacao: 'Em preparação', saiu_para_entrega: 'Saiu para entrega', concluido: 'Finalizado', cancelado: 'Cancelado' };
 
     async function lerResposta(resposta) {
       const tipo = resposta.headers.get('content-type') || '';
@@ -118,22 +152,70 @@
         const correspondeBusca = !busca || String(pedido.id).includes(busca) || (pedido.cliente_nome || '').toLowerCase().includes(busca) || (pedido.cliente_email || '').toLowerCase().includes(busca);
         return correspondeBusca && (!status || pedido.status === status);
       });
-      if (filtrados.length === 0) { lista.innerHTML = '<tr><td class="vazio" colspan="7">Nenhum pedido encontrado.</td></tr>'; return; }
+      if (filtrados.length === 0) { lista.innerHTML = '<div class="vazio">Nenhum pedido encontrado com esses filtros.</div>'; return; }
       filtrados.forEach(pedido => {
-        const itens = (Array.isArray(pedido.itens) ? pedido.itens : []).map(item => `${item.quantidade}x ${item.nome}`).join('\n') || 'Sem itens';
+        const itens = Array.isArray(pedido.itens) ? pedido.itens : [];
         const endereco = pedido.endereco || {};
-        const destino = `${endereco.endereco}, ${endereco.numero}\n${endereco.bairro} - ${endereco.cidade}/${endereco.estado}\nCEP: ${endereco.cep}`;
-        const linha = document.createElement('tr');
-        const clienteTexto = `${pedido.cliente_nome}\n${pedido.cliente_email || ''}${pedido.status === 'cancelado' && pedido.motivo_cancelamento ? `\nMotivo: ${pedido.motivo_cancelamento}` : ''}`;
-        const celulaPedido = document.createElement('td');
-        celulaPedido.textContent = `#${pedido.id}`;
+        const destino = `${endereco.endereco || 'Endereço não informado'}, ${endereco.numero || 's/n'}\n${endereco.bairro || ''}${endereco.cidade ? ` · ${endereco.cidade}/${endereco.estado || ''}` : ''}\n${endereco.cep ? `CEP: ${endereco.cep}` : ''}`;
+        const cartao = document.createElement('article');
+        cartao.className = 'pedido-card';
+        cartao.dataset.status = pedido.status;
+
+        const conteudo = document.createElement('div');
+        const topo = document.createElement('div');
+        topo.className = 'pedido-topo';
+        const identificacao = document.createElement('div');
+        const numero = document.createElement('h3');
+        numero.className = 'pedido-numero';
+        numero.textContent = `PEDIDO #${pedido.id}`;
+        const data = document.createElement('time');
+        data.className = 'pedido-data';
+        data.dateTime = pedido.criado_em;
+        data.textContent = new Date(pedido.criado_em).toLocaleString('pt-BR');
         const badge = document.createElement('span');
         badge.className = `badge${pedido.teste ? ' teste' : ''}`;
         badge.textContent = pedido.teste ? 'TESTE' : 'REAL';
-        celulaPedido.append(document.createElement('br'), badge);
-        linha.appendChild(celulaPedido);
-        [clienteTexto, itens, destino, formatarPreco(pedido.total)].forEach(valor => { const celula = document.createElement('td'); celula.className = 'detalhes'; celula.textContent = valor; linha.appendChild(celula); });
-        const celulaStatus = document.createElement('td');
+        identificacao.append(numero, data, badge);
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `pedido-status-badge ${pedido.status}`;
+        statusBadge.textContent = nomesStatus[pedido.status] || pedido.status;
+        topo.append(identificacao, statusBadge);
+
+        const infoGrid = document.createElement('div');
+        infoGrid.className = 'pedido-info-grid';
+        [['Cliente', `${pedido.cliente_nome || 'Não informado'}\n${pedido.cliente_email || ''}`], ['Entrega', destino]].forEach(([titulo, texto]) => {
+          const info = document.createElement('section');
+          info.className = 'pedido-info';
+          const h4 = document.createElement('h4'); h4.textContent = titulo;
+          const p = document.createElement('p'); p.textContent = texto;
+          info.append(h4, p); infoGrid.appendChild(info);
+        });
+        if (pedido.status === 'cancelado' && pedido.motivo_cancelamento) {
+          const info = document.createElement('section'); info.className = 'pedido-info';
+          const h4 = document.createElement('h4'); h4.textContent = 'Motivo do cancelamento';
+          const p = document.createElement('p'); p.textContent = pedido.motivo_cancelamento;
+          info.append(h4, p); infoGrid.appendChild(info);
+        }
+        conteudo.append(topo, infoGrid);
+
+        const lateral = document.createElement('aside');
+        lateral.className = 'pedido-lateral';
+        const tituloItens = document.createElement('h4'); tituloItens.textContent = 'Itens do pedido';
+        const listaItens = document.createElement('ul'); listaItens.className = 'pedido-itens';
+        if (itens.length === 0) {
+          const li = document.createElement('li'); li.className = 'pedido-item-admin'; li.textContent = 'Sem itens informados'; listaItens.appendChild(li);
+        } else itens.forEach(item => {
+          const li = document.createElement('li'); li.className = 'pedido-item-admin';
+          const nome = document.createElement('span'); nome.textContent = item.nome || 'Item';
+          const quantidade = document.createElement('strong'); quantidade.textContent = `${item.quantidade || 1}x`;
+          li.append(nome, quantidade); listaItens.appendChild(li);
+        });
+        const total = document.createElement('div'); total.className = 'pedido-total';
+        const totalRotulo = document.createElement('span'); totalRotulo.textContent = 'TOTAL';
+        const totalValor = document.createElement('strong'); totalValor.textContent = formatarPreco(pedido.total);
+        total.append(totalRotulo, totalValor);
+        const acao = document.createElement('div'); acao.className = 'pedido-acao';
+        const labelStatus = document.createElement('label'); labelStatus.textContent = 'Atualizar status';
         const seletorStatus = document.createElement('select');
         seletorStatus.className = 'status-select';
         [['em_preparacao', 'Em preparação'], ['saiu_para_entrega', 'Saiu para entrega'], ['concluido', 'Finalizado'], ['cancelado', 'Cancelado']].forEach(([valor, rotulo]) => { const opcao = document.createElement('option'); opcao.value = valor; opcao.textContent = rotulo; opcao.selected = pedido.status === valor; seletorStatus.appendChild(opcao); });
@@ -155,12 +237,10 @@
           }
           atualizarStatus(pedido.id, seletorStatus.value);
         });
-        celulaStatus.appendChild(seletorStatus);
-        linha.appendChild(celulaStatus);
-        const celulaData = document.createElement('td');
-        celulaData.textContent = new Date(pedido.criado_em).toLocaleString('pt-BR');
-        linha.appendChild(celulaData);
-        lista.appendChild(linha);
+        acao.append(labelStatus, seletorStatus);
+        lateral.append(tituloItens, listaItens, total, acao);
+        cartao.append(conteudo, lateral);
+        lista.appendChild(cartao);
       });
     }
 
