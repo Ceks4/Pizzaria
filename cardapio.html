@@ -6,7 +6,7 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title> Cardápio - Lospizzanitos</title>
 <link rel="stylesheet" href="cardapio.css?v=3">
-<link rel="stylesheet" href="comic.css?v=5">
+<link rel="stylesheet" href="comic.css?v=6">
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body class="menu-page">
@@ -638,18 +638,93 @@
 
   document.querySelectorAll('.item').forEach((item, indice) => {
     const nome = item.querySelector('h4').textContent.trim();
-    const precoTexto = item.querySelector('.preco').textContent;
-    const preco = Number(precoTexto.replace('R$', '').replace('.', '').replace(',', '.').trim());
+    const precoElemento = item.querySelector('.preco');
+    const precoTexto = precoElemento.textContent;
+    const preco = Number(precoTexto.replace('R
+
+  itensCarrinho.addEventListener('click', evento => {
+    const botaoRemover = evento.target.closest('[data-remover]');
+    if (!botaoRemover) return;
+    carrinho = carrinho.filter(item => String(item.id) !== botaoRemover.dataset.remover);
+    salvarCarrinho();
+    atualizarCarrinho();
+  });
+
+  function alternarCarrinho(aberto) {
+    painelCarrinho.hidden = !aberto;
+    overlayCarrinho.hidden = !aberto;
+    document.getElementById('btnCarrinho').setAttribute('aria-expanded', aberto);
+  }
+
+  document.getElementById('btnCarrinho').addEventListener('click', () => {
+    alternarCarrinho(painelCarrinho.hidden);
+  });
+  document.getElementById('fecharCarrinho').addEventListener('click', () => alternarCarrinho(false));
+  overlayCarrinho.addEventListener('click', () => alternarCarrinho(false));
+  finalizarCompra.addEventListener('click', () => {
+    if (carrinho.length > 0) {
+      salvarCarrinho();
+      window.location.href = 'finalizar.html';
+    }
+  });
+  atualizarCarrinho();
+</script>
+
+</body>
+</html>
+, '').replace('.', '').replace(',', '.').trim());
+    const ehPizza = !item.closest('#bebidas');
+    let seletorTamanho = null;
+
     const botao = document.createElement('button');
     botao.type = 'button';
     botao.className = 'botao-comprar';
-    botao.textContent = 'Comprar';
+    botao.textContent = ehPizza ? 'Escolha o tamanho' : 'Adicionar ao carrinho';
+    botao.disabled = ehPizza;
+
+    if (ehPizza) {
+      const campoTamanho = document.createElement('div');
+      campoTamanho.className = 'campo-tamanho';
+      const labelTamanho = document.createElement('label');
+      labelTamanho.textContent = 'Escolha o tamanho';
+      seletorTamanho = document.createElement('select');
+      seletorTamanho.className = 'seletor-tamanho';
+      seletorTamanho.setAttribute('aria-label', `Tamanho da pizza ${nome}`);
+      seletorTamanho.innerHTML = `
+        <option value="" selected disabled>Selecionar tamanho</option>
+        <option value="broto" data-fator="0.5" data-rotulo="Broto · 4 fatias">Broto · 4 fatias — ${formatarPreco(preco * 0.5)}</option>
+        <option value="media" data-fator="0.75" data-rotulo="Média · 6 fatias">Média · 6 fatias — ${formatarPreco(preco * 0.75)}</option>
+        <option value="grande" data-fator="1" data-rotulo="Grande · 8 fatias">Grande · 8 fatias — ${formatarPreco(preco)}</option>
+      `;
+      const dicaPreco = document.createElement('small');
+      dicaPreco.className = 'dica-tamanho';
+      dicaPreco.textContent = `Grande: ${formatarPreco(preco)}`;
+      campoTamanho.append(labelTamanho, seletorTamanho, dicaPreco);
+      const destinoTamanho = item.querySelector('.item-conteudo') || item;
+      destinoTamanho.appendChild(campoTamanho);
+
+      seletorTamanho.addEventListener('change', () => {
+        const opcao = seletorTamanho.selectedOptions[0];
+        const precoSelecionado = preco * Number(opcao.dataset.fator || 1);
+        precoElemento.textContent = formatarPreco(precoSelecionado);
+        dicaPreco.textContent = opcao.dataset.rotulo;
+        botao.disabled = false;
+        botao.textContent = 'Adicionar ao carrinho';
+      });
+    }
+
     botao.addEventListener('click', () => {
-      const produto = carrinho.find(produtoAtual => produtoAtual.id === indice);
+      const opcaoTamanho = seletorTamanho?.selectedOptions[0] || null;
+      if (ehPizza && !seletorTamanho.value) return;
+      const fator = ehPizza ? Number(opcaoTamanho.dataset.fator) : 1;
+      const precoFinal = Number((preco * fator).toFixed(2));
+      const tamanho = ehPizza ? opcaoTamanho.dataset.rotulo : null;
+      const idProduto = ehPizza ? `${indice}-${seletorTamanho.value}` : `produto-${indice}`;
+      const produto = carrinho.find(produtoAtual => String(produtoAtual.id) === idProduto);
       if (produto) {
         produto.quantidade += 1;
       } else {
-        carrinho.push({ id: indice, nome, preco, quantidade: 1 });
+        carrinho.push({ id: idProduto, nome: tamanho ? `${nome} — ${tamanho}` : nome, preco: precoFinal, quantidade: 1, tamanho });
       }
       salvarCarrinho();
       atualizarCarrinho();
