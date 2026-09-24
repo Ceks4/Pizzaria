@@ -177,23 +177,86 @@ function subtotalDosItens(itens) {
 }
 
 async function garantirColunasPedidos() {
+  const banco = await pool.connect();
   try {
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pagamento_id TEXT`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS teste BOOLEAN NOT NULL DEFAULT FALSE`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS forma_pagamento TEXT`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS troco_para NUMERIC(10, 2)`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES usuarios(id)`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS subtotal NUMERIC(10, 2)`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS taxa_entrega NUMERIC(10, 2) NOT NULL DEFAULT 0`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS prazo_estimado TEXT`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pago BOOLEAN NOT NULL DEFAULT FALSE`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS tipo_cartao TEXT`);
-    await pool.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS chave_idempotencia TEXT`);
-    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS pedidos_chave_idempotencia_idx ON pedidos(chave_idempotencia) WHERE chave_idempotencia IS NOT NULL`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS pedidos_cliente_id_idx ON pedidos(cliente_id, criado_em DESC)`);
-    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS sessoes_token_idx ON sessoes(token)`);
-    await pool.query(`
+    await banco.query('BEGIN');
+    await banco.query(`SELECT pg_advisory_xact_lock(12870421)`);
+    await banco.query(`
+      CREATE TABLE IF NOT EXISTS roles (
+        id SERIAL PRIMARY KEY,
+        nome VARCHAR(30) NOT NULL UNIQUE
+      )
+    `);
+    await banco.query(`INSERT INTO roles (nome) VALUES ('cliente'), ('admin') ON CONFLICT (nome) DO NOTHING`);
+    await banco.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        nome VARCHAR(100) NOT NULL,
+        email VARCHAR(160) NOT NULL UNIQUE,
+        senha_hash TEXT NOT NULL,
+        role_id INTEGER NOT NULL REFERENCES roles(id),
+        ativo BOOLEAN NOT NULL DEFAULT TRUE,
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await banco.query(`
+      CREATE TABLE IF NOT EXISTS clientes (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL UNIQUE REFERENCES usuarios(id) ON DELETE CASCADE,
+        telefone VARCHAR(20) NOT NULL,
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await banco.query(`
+      CREATE TABLE IF NOT EXISTS sessoes (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        token TEXT NOT NULL UNIQUE,
+        expira_em TIMESTAMPTZ NOT NULL,
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await banco.query(`
+      CREATE TABLE IF NOT EXISTS pedidos (
+        id SERIAL PRIMARY KEY,
+        cliente_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        cliente_nome VARCHAR(100) NOT NULL,
+        cliente_email VARCHAR(160) NOT NULL,
+        itens JSONB NOT NULL,
+        endereco JSONB NOT NULL,
+        subtotal NUMERIC(10, 2),
+        taxa_entrega NUMERIC(10, 2) NOT NULL DEFAULT 0,
+        total NUMERIC(10, 2) NOT NULL,
+        status VARCHAR(30) NOT NULL DEFAULT 'em_preparacao',
+        motivo_cancelamento TEXT,
+        pagamento_id TEXT,
+        forma_pagamento VARCHAR(30),
+        troco_para NUMERIC(10, 2),
+        pago BOOLEAN NOT NULL DEFAULT FALSE,
+        tipo_cartao VARCHAR(10),
+        prazo_estimado TEXT,
+        chave_idempotencia TEXT,
+        teste BOOLEAN NOT NULL DEFAULT FALSE,
+        criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS motivo_cancelamento TEXT`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pagamento_id TEXT`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS teste BOOLEAN NOT NULL DEFAULT FALSE`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS forma_pagamento TEXT`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS troco_para NUMERIC(10, 2)`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS cliente_id INTEGER REFERENCES usuarios(id)`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS subtotal NUMERIC(10, 2)`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS taxa_entrega NUMERIC(10, 2) NOT NULL DEFAULT 0`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS prazo_estimado TEXT`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS pago BOOLEAN NOT NULL DEFAULT FALSE`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS tipo_cartao TEXT`);
+    await banco.query(`ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS chave_idempotencia TEXT`);
+    await banco.query(`CREATE UNIQUE INDEX IF NOT EXISTS pedidos_chave_idempotencia_idx ON pedidos(chave_idempotencia) WHERE chave_idempotencia IS NOT NULL`);
+    await banco.query(`CREATE INDEX IF NOT EXISTS pedidos_cliente_id_idx ON pedidos(cliente_id, criado_em DESC)`);
+    await banco.query(`CREATE INDEX IF NOT EXISTS pedidos_status_idx ON pedidos(status, criado_em DESC)`);
+    await banco.query(`CREATE UNIQUE INDEX IF NOT EXISTS sessoes_token_idx ON sessoes(token)`);
+    await banco.query(`
       CREATE TABLE IF NOT EXISTS pagamentos_pendentes (
         pagamento_id TEXT PRIMARY KEY,
         usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
@@ -201,26 +264,31 @@ async function garantirColunasPedidos() {
         criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    await pool.query(`
+    await banco.query(`
       CREATE TABLE IF NOT EXISTS configuracoes_app (
         chave TEXT PRIMARY KEY,
         valor JSONB NOT NULL,
         atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    await pool.query(
+    await banco.query(
       `INSERT INTO configuracoes_app (chave, valor) VALUES ('entrega', $1::jsonb) ON CONFLICT (chave) DO NOTHING`,
       [JSON.stringify(CONFIG_ENTREGA_PADRAO)]
     );
+    await banco.query('COMMIT');
   } catch (erro) {
+    await banco.query('ROLLBACK').catch(() => {});
     console.error('Erro ao preparar estrutura do banco:', erro);
     throw erro;
+  } finally {
+    banco.release();
   }
 }
 
 const guardarColunasPedido = garantirColunasPedidos();
 
 async function garantirFotosProdutos() {
+  await guardarColunasPedido;
   await pool.query(`
     CREATE TABLE IF NOT EXISTS fotos_produtos (
       slug TEXT PRIMARY KEY,
@@ -490,7 +558,8 @@ app.post('/api/cadastro', limiteLogin, async (req, res) => {
   try {
     await conexao.query('BEGIN');
     const result = await conexao.query(
-      'INSERT INTO usuarios (nome, email, senha_hash) VALUES ($1, $2, $3) RETURNING id',
+      `INSERT INTO usuarios (nome, email, senha_hash, role_id)
+       VALUES ($1, $2, $3, (SELECT id FROM roles WHERE nome = 'cliente' LIMIT 1)) RETURNING id`,
       [nome, email, senhaHash]
     );
     const usuarioId = result.rows[0].id;
@@ -829,4 +898,9 @@ app.use((erro, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+Promise.all([guardarColunasPedido, guardarFotosProdutos])
+  .then(() => app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`)))
+  .catch(erro => {
+    console.error('Falha ao iniciar o servidor:', erro.message);
+    process.exit(1);
+  });
