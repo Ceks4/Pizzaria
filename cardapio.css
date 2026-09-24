@@ -682,3 +682,19 @@
       letter-spacing: 3px;
     }
   }
+
+/* Estado correto da conta no cabeçalho */
+.perfil[hidden] {
+  display: none !important;
+}
+
+.perfil-visitante {
+  gap: 7px;
+}
+
+.perfil-visitante a {
+  min-height: 36px;
+  padding: 6px 9px;
+  font-size: 11px;
+  text-transform: uppercase;
+}
