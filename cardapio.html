@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title> Cardápio - Lospizzanitos</title>
-<link rel="stylesheet" href="cardapio.css?v=4">
-<link rel="stylesheet" href="comic.css?v=8">
+<link rel="stylesheet" href="cardapio.css?v=5">
+<link rel="stylesheet" href="comic.css?v=9">
 <script>document.documentElement.classList.add('js');</script>
 </head>
 <body class="menu-page">
@@ -30,6 +30,10 @@
         <span>Carrinho</span>
         <span class="contador-carrinho" id="quantidadeCarrinho">0</span>
       </button>
+      <div class="perfil perfil-visitante" id="perfilVisitante">
+        <a href="login.html" class="btn-auth btn-entrar">Entrar</a>
+        <a href="cadastro.html" class="btn-auth btn-cadastro">Cadastrar</a>
+      </div>
       <div class="perfil" id="perfil" hidden>
         <span class="perfil-saudacao">Olá, <strong id="perfilNome"></strong></span>
         <button type="button" id="btnSair">Sair</button>
@@ -578,10 +582,22 @@
     localStorage.removeItem('usuarioLogado');
   }
   const perfil = document.getElementById('perfil');
+  const perfilVisitante = document.getElementById('perfilVisitante');
+  const tokenSessao = localStorage.getItem('tokenSessao');
+  const usuarioValido = usuario
+    && typeof usuario.nome === 'string'
+    && usuario.nome.trim().length > 0
+    && tokenSessao;
 
-  if (usuario && localStorage.getItem('tokenSessao')) {
-    document.getElementById('perfilNome').textContent = usuario.nome;
+  if (usuarioValido) {
+    document.getElementById('perfilNome').textContent = usuario.nome.trim();
     perfil.hidden = false;
+    perfilVisitante.hidden = true;
+  } else {
+    localStorage.removeItem('usuarioLogado');
+    localStorage.removeItem('tokenSessao');
+    perfil.hidden = true;
+    perfilVisitante.hidden = false;
   }
 
   document.getElementById('btnSair').addEventListener('click', () => {
